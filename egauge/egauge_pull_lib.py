@@ -63,22 +63,22 @@ def egauge_fetch_data(egauge_url, from_time, to_time, username=None, password=No
     password = "default"
 
   try:
-		req = httplib2.Http(timeout=15)
-		req.add_credentials(username, password)   # Digest Authentication
-		response, content = req.request (gw_url + params, headers={'Connection': 'Keep-Alive', 'accept-encoding': 'gzip'})
-		if response['status'] == '401':
-		  logger.info("Unauthorized request!")
-		elif response['status'] == '400':
-		  logger.info( "Bad Request!")
-		elif response['status'] == '500':
-		  logger.info("Internal Error!")
-		elif response['status'] == '408':
-		  logger.info("Request timeout!")
-		elif response['status'] == '404':
-		  logger.info("device not found. Probably it is not up")
+    req = httplib2.Http(timeout=15)
+    req.add_credentials(username, password)   # Digest Authentication
+    response, content = req.request (gw_url + params, headers={'Connection': 'Keep-Alive', 'accept-encoding': 'gzip'})
+    if response['status'] == '401':
+      logger.info("Unauthorized request!")
+    elif response['status'] == '400':
+      logger.info( "Bad Request!")
+    elif response['status'] == '500':
+      logger.info("Internal Error!")
+    elif response['status'] == '408':
+      logger.info("Request timeout!")
+    elif response['status'] == '404':
+      logger.info("device not found. Probably it is not up")
 
-		if response['status'] != '200':
-		  return None, None
+    if response['status'] != '200':
+      return None, None
   except httplib.IncompleteRead as e:
     raise(e)
   except Exception as e:
