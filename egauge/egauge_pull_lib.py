@@ -1,3 +1,6 @@
+#
+# 2012 plotwatt.com
+#
 import logging
 import httplib2
 import httplib
