@@ -47,7 +47,7 @@ def egauge_fetch_data(egauge_url, from_time, to_time, username=None, password=No
     logger.info("-f and -t both are mandatory.")
     return None, None
 
-  logger.info( "Fetching :%s %s "% (gw_url, params))
+  logger.info( "Fetching :%s%s "% (gw_url, params))
 
   # If the DB has value 'NULL' then that maps to 'None' in python object.
   # It gives exception for httplib API's, so set it to "" empty string if they are 'None'
@@ -80,16 +80,18 @@ def egauge_fetch_data(egauge_url, from_time, to_time, username=None, password=No
     return None, None
   return response, content
 
-
+#
+# sample run
+#
+# python ./egauge_pull_lib.py egauge4077.egaug.es 2012-12-25 2012-12-26
+#
 if __name__ == "__main__":
     from optparse import OptionParser
     parser = OptionParser(usage="usage: %prog device_url from_date to_date [options]")
-    parser.add_option("--no-data", dest="no_data", default=False, action="store_true",
-                    help="dont add data. fetch only structure")
-    parser.add_option("--seconds", dest="seconds", default=False, action="store_true",
+    parser.add_option("--seconds", default=False, action="store_true",
                     help="will try to fetch seconds data if specified")
-    # fetch from egauge Wed Dec 26 09:05:26 UTC 2012 -- Thu Dec 27 12:52:06 UTC
-    # 2012
+    parser.add_option( "--username")
+    parser.add_option( "--password")
     (options, args) = parser.parse_args()
 
     if len(args)<3:
@@ -106,7 +108,9 @@ if __name__ == "__main__":
     #status, data = egauge_fetch_data('egauge4077.egaug.es',
     #            1356512726,1356612726)
 
-    status, data = egauge_fetch_data(device_url, from_ts, to_ts)
+    status, data = egauge_fetch_data(device_url, from_ts, to_ts,
+            username=options.username, password=options.password,
+            seconds=options.seconds)
 
     print data
 
