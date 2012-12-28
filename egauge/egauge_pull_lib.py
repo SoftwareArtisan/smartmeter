@@ -23,6 +23,9 @@ def parse_datetime(str) :
 def get_ts(dt):
     return calendar.timegm(dt.utctimetuple())
 
+#
+# basic fetch implementation of http://egauge.net/docs/egauge-xml-api.pdf
+# 
 def egauge_fetch_data(egauge_url, from_time, to_time, username=None, password=None, seconds=False):
   """
   curl -v --digest  -uuser
