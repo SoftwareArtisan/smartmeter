@@ -38,6 +38,37 @@ class egcfg:
 
         print response, content
         return response, content
+    
+    def regs(s):
+        registers = {}
+        response, content = s.cfg()
+        from elementtree import ElementTree as ET
+        from collections import namedtuple
+        Reg = namedtuple('reg','id,name,val,type')
+        root = ET.XML(content)
+        # <settings> <team> <tmember> if type=='local'
+        team = root.findall('team')[0]
+        tmembers = team.findall('tmember')
+        if len(tmembers)==0:
+            tmember = tmembers[0]
+        else:
+            for tm in tmembers:
+               ttype=tm.find('type').text 
+               print "ttype", ttype
+               if ttype == 'local':
+                   tmember=tm
+                   break
+        # tm is set now 
+        for reg in tm.findall('reg'):
+            rg=Reg._make((int(reg.find('id').text),
+                          reg.find('name').text,
+                          reg.find('val').text,
+                          reg.find('type').text))
+            registers[rg.name] = rg
+
+
+        print registers
+        return registers
 
     def cfg(s):
         uri="/cgi-bin/protected/egauge-cfg"
@@ -52,8 +83,9 @@ class egcfg:
         uri="/cgi-bin/protected/egauge-cfg"
         body='pushURI="%s"'%pushURI
         s.request(uri,method="POST",body=body)
-        body="pushInterval=%d"%pushInterval
-        s.request(uri,method="POST",body=body)
+        if pushInterval:
+            body="pushInterval=%d"%pushInterval
+            s.request(uri,method="POST",body=body)
         if sec:
             body='pushOptions="sec"'
             s.request(uri,method="POST",body=body)
@@ -70,7 +102,7 @@ class egcfg:
 def main():
     from optparse import OptionParser
     parser = OptionParser(usage="""usage: %prog action device_url [options]
-                action = getconfig | register | reboot | upgrade """)
+                action = getconfig | getregisters | register | reboot | upgrade """)
     parser.add_option("--seconds", default=False, action="store_true",
                     help="will try to fetch seconds data if specified")
     parser.add_option( "--username", default="owner")
@@ -86,7 +118,7 @@ def main():
     action = args[0]
     device_url = args[1]
 
-    if action not in [ "register", "reboot", "upgrade" , "getconfig"]:
+    if action not in [ "register", "reboot", "upgrade" , "getconfig" ,"getregisters"]:
         parser.print_help()
         exit(2)
 
@@ -103,6 +135,8 @@ def main():
         eg.upgrade()
     elif action == "getconfig":
         eg.cfg()
+    elif action == "getregisters":
+        eg.regs()
     
 if __name__ == "__main__":
     main()
