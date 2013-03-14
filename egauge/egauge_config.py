@@ -158,9 +158,9 @@ class egcfg:
         uri="/cgi-bin/protected/egauge-cfg"
         body='pushURI="%s"\n'%pushURI
         if pushInterval:
-            body="pushInterval=%d\n"%pushInterval
+            body+="pushInterval=%d\n"%pushInterval
         if sec:
-            body='pushOptions="sec"\n'
+            body+='pushOptions="sec"\n'
         s.request(uri,method="POST",body=body)
         print body
 
