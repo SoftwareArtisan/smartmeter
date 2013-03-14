@@ -3,13 +3,16 @@ import urllib
 import os
 import logging
 import time
+import urlparse
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
 
 class egcfg:
     def __init__(s,devurl,username,password,lg):
-        s.devurl=devurl
+        if not devurl.startswith('http'):
+            devurl = "http://"+devurl
+        s.devurl=urlparse.urlparse(devurl)
         s.username=username
         s.password=password
         s.lg=lg
@@ -17,7 +20,9 @@ class egcfg:
         s.req.add_credentials(username, password)   # Digest Authentication
 
     def request(s,uri,method="GET", body=None):
-        requrl=s.devurl+uri
+        if not uri.startswith("/"):
+            uri = "/"+uri
+        requrl=s.devurl.geturl()+uri
         print requrl
         response, content = s.req.request (requrl,method=method, 
                 headers={'Connection': 'Keep-Alive', 
@@ -45,7 +50,7 @@ class egcfg:
         """
         # first save existing config somewhere
 
-        ofile = "%s.backup.%d" %(ifile,int(time.time()))
+        ofile = "%s.conf.backup.%d" %(s.devurl.hostname,int(time.time()))
         s.getcfg(ofile)
 
         content = open(ifile,'rt').read()
