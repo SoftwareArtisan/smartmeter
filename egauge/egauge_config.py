@@ -2,6 +2,7 @@ import httplib2
 import urllib
 import os
 import logging
+import time
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
@@ -36,16 +37,75 @@ class egcfg:
         elif 'Not Authorized' in content:
             s.lg.info("Unauthorized request!")
 
-        print response, content
         return response, content
-    
+ 
+    def setcfg(s, ifile):
+        """
+        use the xml file that is provided and set config
+        """
+        # first save existing config somewhere
+
+        ofile = "%s.backup.%d" %(ifile,int(time.time()))
+        s.getcfg(ofile)
+
+        content = open(ifile,'rt').read()
+        channels, team, totals = s.parse_installation(content)
+        body = s.get_installation_POST(channels, team, totals)
+
+        uri="/cgi-bin/protected/egauge-cfg"
+        resp, cont = s.request(uri,method="POST",body=body)
+
+        print resp, cont
+
+        return resp, cont
+   
     def regs(s):
-        registers = {}
-        response, content = s.cfg()
+        response, content = s.getcfg()
+        channels, team, totals = s.parse_installation(content)
+        post_body = s.get_installation_POST(channels, team, totals)
+        print post_body
+
+    @staticmethod
+    def get_installation_POST(channels,team,totals):
+        # channels
+        op = ""
+        for ch in channels:
+            op += "ch%d=%s\n" %(ch.id,ch.val)
+        # team
+        op += "team=\n"
+        op += "member=\"local\"\n"
+        op += "link=\"local\"\n"
+
+        for reg in team:
+            op += "name=\"%s\"\n" %reg.name
+            op += "id=\"%d\"\n" %reg.id
+            op += "val=\"%s\"\n" %reg.val
+            op += "type=\"%s\"\n" %reg.type
+
+        op += "team_end=\n"
+        op += "totals=\n"
+        for mp in totals:
+            op += "map%d=%s\n" %(mp.id,mp.val)
+
+        return op
+
+    @staticmethod
+    def parse_installation(content):
         from elementtree import ElementTree as ET
         from collections import namedtuple
+        teams = []
+        totals = []
+        channels = []
+        Total = namedtuple('map', 'id,val')
         Reg = namedtuple('reg','id,name,val,type')
+        Channel = namedtuple('ch', 'id,val')
         root = ET.XML(content)
+        # <ch0> ... <ch15> .. not all will always be available
+        for ch_id in range(16):
+            chid="ch%d"%ch_id
+            ch=root.find(chid)
+            if ch != None: channels.append(Channel._make((ch_id,ch.text)))
+
         # <settings> <team> <tmember> if type=='local'
         team = root.findall('team')[0]
         tmembers = team.findall('tmember')
@@ -54,7 +114,6 @@ class egcfg:
         else:
             for tm in tmembers:
                ttype=tm.find('type').text 
-               print "ttype", ttype
                if ttype == 'local':
                    tmember=tm
                    break
@@ -64,15 +123,26 @@ class egcfg:
                           reg.find('name').text,
                           reg.find('val').text,
                           reg.find('type').text))
-            registers[rg.name] = rg
+            teams.append(rg)
 
+        # virtual registers
+        total = root.findall('totals')[0]
+        for idx,mp in enumerate(total.findall('map')):
+            totals.append(Total._make((idx,mp.text)))
 
-        print registers
-        return registers
+        return channels, teams, totals
 
-    def cfg(s):
+    def getcfg(s, ofile=None):
         uri="/cgi-bin/protected/egauge-cfg"
-        return s.request(uri)
+        resp, cont = s.request(uri)
+        if ofile!=None:
+            of=open(ofile,"wt")
+            print >> of, cont
+            of.close()
+            print "saved config to ", ofile
+        else:
+            print resp, cont
+        return resp, cont
 
     """
      <pushURI></pushURI>
@@ -81,14 +151,12 @@ class egcfg:
     """
     def register(s,pushURI,pushInterval=60,sec=False):
         uri="/cgi-bin/protected/egauge-cfg"
-        body='pushURI="%s"'%pushURI
-        s.request(uri,method="POST",body=body)
+        body='pushURI="%s"\n'%pushURI
         if pushInterval:
-            body="pushInterval=%d"%pushInterval
-            s.request(uri,method="POST",body=body)
+            body="pushInterval=%d\n"%pushInterval
         if sec:
-            body='pushOptions="sec"'
-            s.request(uri,method="POST",body=body)
+            body='pushOptions="sec"\n'
+        s.request(uri,method="POST",body=body)
         print body
 
     def upgrade(s):
@@ -107,6 +175,7 @@ def main():
                     help="will try to fetch seconds data if specified")
     parser.add_option( "--username", default="owner")
     parser.add_option( "--password", default="default")
+    parser.add_option( "--cfgfile", default=None)
     parser.add_option( "--pushInterval")
     parser.add_option( "--pushURI")
     (options, args) = parser.parse_args()
@@ -118,7 +187,8 @@ def main():
     action = args[0]
     device_url = args[1]
 
-    if action not in [ "register", "reboot", "upgrade" , "getconfig" ,"getregisters"]:
+    if action not in [ "register", "reboot", "upgrade" , "getconfig"
+            ,"getregisters", "setconfig" ]:
         parser.print_help()
         exit(2)
 
@@ -134,7 +204,9 @@ def main():
     elif action == "upgrade":
         eg.upgrade()
     elif action == "getconfig":
-        eg.cfg()
+        eg.getcfg(options.cfgfile)
+    elif action == "setconfig":
+        eg.setcfg(options.cfgfile)
     elif action == "getregisters":
         eg.regs()
     
