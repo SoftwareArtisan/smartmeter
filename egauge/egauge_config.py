@@ -172,10 +172,14 @@ class egcfg:
         uri = "/cgi-bin/protected/reboot"
         return s.request(uri)
 
+    def netconfig(s):
+        uri = "/cgi-bin/netcfg?live"
+        print s.request(uri)
+
 def main():
     from optparse import OptionParser
     parser = OptionParser(usage="""usage: %prog action device_url [options]
-                action = getconfig | getregisters | register | reboot | upgrade """)
+                action = getconfig | getregisters | register | reboot | upgrade | netconfig""")
     parser.add_option("--seconds", default=False, action="store_true",
                     help="will try to fetch seconds data if specified")
     parser.add_option( "--username", default="owner")
@@ -193,7 +197,7 @@ def main():
     device_url = args[1]
 
     if action not in [ "register", "reboot", "upgrade" , "getconfig"
-            ,"getregisters", "setconfig" ]:
+            ,"getregisters", "setconfig", "netconfig" ]:
         parser.print_help()
         exit(2)
 
@@ -208,6 +212,8 @@ def main():
         eg.reboot()
     elif action == "upgrade":
         eg.upgrade()
+    elif action == "netconfig":
+        eg.netconfig()
     elif action == "getconfig":
         eg.getcfg(options.cfgfile)
     elif action == "setconfig":
