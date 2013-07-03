@@ -205,7 +205,7 @@ def main_opts(parser, options, args):
     action = args[0]
     device_url = args[1]
 
-    if action not in [ "register", "reboot", "upgrade" , "getconfig"
+    if action not in [ "register", "de-register", "reboot", "upgrade" , "getconfig"
             ,"getregisters", "setconfig", "netconfig" ]:
         parser.print_help()
         exit(2)
@@ -217,6 +217,8 @@ def main_opts(parser, options, args):
         pushInterval = int(options.pushInterval)
     if action == "register":
         eg.register(options.pushURI, pushInterval, options.seconds)
+    if action == "de-register":
+        eg.register(None, pushInterval, options.seconds)
     elif action == "reboot":
         eg.reboot()
     elif action == "upgrade":
