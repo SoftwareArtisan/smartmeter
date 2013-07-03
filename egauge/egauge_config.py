@@ -218,7 +218,7 @@ def main_opts(parser, options, args):
     if action == "register":
         eg.register(options.pushURI, pushInterval, options.seconds)
     if action == "de-register":
-        eg.register(None, pushInterval, options.seconds)
+        eg.register("", pushInterval, options.seconds)
     elif action == "reboot":
         eg.reboot()
     elif action == "upgrade":
