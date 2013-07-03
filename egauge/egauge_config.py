@@ -176,7 +176,7 @@ class egcfg:
         uri = "/cgi-bin/netcfg?live"
         print s.request(uri)
 
-def main():
+def cfg_opts():
     from optparse import OptionParser
     parser = OptionParser(usage="""usage: %prog action device_url [options]
                 action = getconfig | getregisters | register | reboot | upgrade | netconfig""")
@@ -187,8 +187,17 @@ def main():
     parser.add_option( "--cfgfile", default=None)
     parser.add_option( "--pushInterval")
     parser.add_option( "--pushURI")
-    (options, args) = parser.parse_args()
 
+    return parser
+ 
+
+def main():
+    parser = cfg_opts()
+    (options, args) = parser.parse_args()
+    main_opts(parser, options, args)
+
+
+def main_opts(parser, options, args):
     if len(args)<2:
         parser.print_help()
         exit(2)
