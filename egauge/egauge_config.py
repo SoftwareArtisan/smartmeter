@@ -50,8 +50,7 @@ class egcfg:
         """
         # first save existing config somewhere
 
-        ofile = "%s.conf.backup.%d" %(s.devurl.hostname,int(time.time()))
-        s.getcfg(ofile)
+        s.getcfg()
 
         content = open(ifile,'rt').read()
         channels, team, totals = s.parse_installation(content)
@@ -139,8 +138,10 @@ class egcfg:
 
     def getcfg(s, ofile=None):
         uri="/cgi-bin/protected/egauge-cfg"
+        if ofile==None: ofile = "%s.conf.backup.%d" %(s.devurl.hostname,int(time.time()))
+            
         resp, cont = s.request(uri)
-        if ofile!=None:
+        if ofile!="--":
             of=open(ofile,"wt")
             print >> of, cont
             of.close()
@@ -176,26 +177,27 @@ class egcfg:
         uri = "/cgi-bin/netcfg?live"
         print s.request(uri)
 
+actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
+            ,"getregisters", "setconfig", "netconfig" ]
+
 def cfg_opts():
     from optparse import OptionParser
     parser = OptionParser(usage="""usage: %prog action device_url [options]
-                action = getconfig | getregisters | register | reboot | upgrade | netconfig""")
+                action = {}""".format("|".join(actions)))
     parser.add_option("--seconds", default=False, action="store_true",
                     help="will try to fetch seconds data if specified")
     parser.add_option( "--username", default="owner")
     parser.add_option( "--password", default="default")
-    parser.add_option( "--cfgfile", default=None)
+    parser.add_option( "--cfgfile", default=None, help ="-- will write to stdout")
     parser.add_option( "--pushInterval")
     parser.add_option( "--pushURI")
 
     return parser
  
-
 def main():
     parser = cfg_opts()
     (options, args) = parser.parse_args()
     main_opts(parser, options, args)
-
 
 def main_opts(parser, options, args):
     if len(args)<2:
@@ -205,8 +207,7 @@ def main_opts(parser, options, args):
     action = args[0]
     device_url = args[1]
 
-    if action not in [ "register", "de-register", "reboot", "upgrade" , "getconfig"
-            ,"getregisters", "setconfig", "netconfig" ]:
+    if action not in actions:
         parser.print_help()
         exit(2)
 
