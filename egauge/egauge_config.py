@@ -60,9 +60,18 @@ class egcfg:
         resp, cont = s.request(uri,method="POST",body=body)
 
         print resp, cont
-
         return resp, cont
-   
+  
+    def setntp(s,ntpServer):
+        """
+        set ntp server configuration and reboot
+        """
+        uri="/cgi-bin/protected/egauge-cfg"
+        body='ntpServer=%s\n'%ntpServer
+        resp, cont = s.request(uri,method="POST",body=body)
+        print resp, cont
+        return resp, cont
+
     def regs(s):
         response, content = s.getcfg()
         channels, team, totals = s.parse_installation(content)
@@ -178,7 +187,7 @@ class egcfg:
         print s.request(uri)
 
 actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
-            ,"getregisters", "setconfig", "netconfig" ]
+            ,"getregisters", "setconfig", "netconfig", "setntp" ]
 
 def cfg_opts():
     from optparse import OptionParser
@@ -191,6 +200,7 @@ def cfg_opts():
     parser.add_option( "--cfgfile", default=None, help ="-- will write to stdout")
     parser.add_option( "--pushInterval")
     parser.add_option( "--pushURI")
+    parser.add_option( "--ntpServer")
 
     return parser
  
@@ -208,6 +218,7 @@ def main_opts(parser, options, args):
     device_url = args[1]
 
     if action not in actions:
+        print "unknown", action
         parser.print_help()
         exit(2)
 
@@ -230,6 +241,11 @@ def main_opts(parser, options, args):
         eg.getcfg(options.cfgfile)
     elif action == "setconfig":
         eg.setcfg(options.cfgfile)
+    elif action == "setntp":
+        if options.ntpServer is None:
+          print "ntpServer is required for setntp"
+          exit(2)
+        eg.setntp(options.ntpServer)
     elif action == "getregisters":
         eg.regs()
     
