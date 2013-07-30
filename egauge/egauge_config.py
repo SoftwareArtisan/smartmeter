@@ -24,6 +24,7 @@ class egcfg:
         if not uri.startswith("/"):
             uri = "/"+uri
         requrl=s.devurl.geturl()+uri
+        success = False
         print requrl
         response, content = s.req.request (requrl,method=method, 
                 headers={'Connection': 'Keep-Alive', 
@@ -31,18 +32,24 @@ class egcfg:
                         'Content-Type':'application/xml'},
                 body=body)
         if response['status'] == '401':
-            s.lg.info("Unauthorized request!")
+            s.lg.warning("Unauthorized request!")
         elif response['status'] == '400':
-            s.lg.info("Bad Request!")
+            s.lg.warning("Bad Request!")
         elif response['status'] == '500':
-            s.lg.info("Internal Error!")
+            s.lg.warning("Internal Error!")
         elif response['status'] == '408':
-            s.lg.info("Request timeout!")
+            s.lg.warning("Request timeout!")
         elif response['status'] == '404':
-            s.lg.info("device not found. Probably it is not up")
-        elif 'Not Authorized' in content:
-            s.lg.info("Unauthorized request!")
+            s.lg.warning("device not found. Probably it is not up")
+        elif 'not authorized' in content.lower():
+            s.lg.warning("Unauthorized request! using username={} and password={}".format(s.username, s.password))
+            response['status'] = 401
+        else:
+            success = True
 
+        if not success:
+          print response, content
+          
         return response, content
  
     def setcfg(s, ifile):
