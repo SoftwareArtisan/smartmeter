@@ -1,4 +1,5 @@
 import httplib2
+import httplib
 import urllib
 import os
 import logging
@@ -180,11 +181,20 @@ class egcfg:
 
     def reboot(s):
         uri = "/cgi-bin/protected/reboot"
-        return s.request(uri)
+        ret = None
+        try:
+            ret = s.request(uri)
+        except httplib.IncompleteRead as e:
+            # it is possible to get this because the server reboots
+            print "harmless received ", e
+
+        return ret
 
     def netconfig(s):
         uri = "/cgi-bin/netcfg?live"
-        print s.request(uri)
+        ret = s.request(uri)
+        print ret
+        return ret
 
 actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
             ,"getregisters", "setconfig", "netconfig", "setntp" ]
