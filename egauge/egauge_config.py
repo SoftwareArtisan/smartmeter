@@ -5,6 +5,7 @@ import os
 import logging
 import time
 import urlparse
+import urllib2
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
@@ -33,17 +34,23 @@ class egcfg:
                 body=body)
         if response['status'] == '401':
             s.lg.warning("Unauthorized request!")
+            raise urllib2.HTTPError(requrl, 401, "Unauthorized Request", hdrs = None, fp = None)
         elif response['status'] == '400':
             s.lg.warning("Bad Request!")
+            raise urllib2.HTTPError(requrl, 400, "Bad Request", hdrs = None, fp = None)
         elif response['status'] == '500':
             s.lg.warning("Internal Error!")
+            raise urllib2.HTTPError(requrl, 500, "Internal Error", hdrs = None, fp = None)
         elif response['status'] == '408':
             s.lg.warning("Request timeout!")
+            raise urllib2.HTTPError(requrl, 408, "Request Timeout", hdrs = None, fp = None)
         elif response['status'] == '404':
             s.lg.warning("device not found. Probably it is not up")
+            raise urllib2.HTTPError(requrl, 404, "Device not found", hdrs = None, fp = None)
         elif 'not authorized' in content.lower():
             s.lg.warning("Unauthorized request! using username={} and password={}".format(s.username, s.password))
             response['status'] = 401
+            raise urllib2.HTTPError(requrl, 401, "Unauthorized Request", hdrs = None, fp = None)
         else:
             success = True
 
@@ -238,9 +245,7 @@ def main_opts(parser, options, args):
         print "unknown", action
         parser.print_help()
         exit(2)
-
     eg=egcfg(device_url, options.username, options.password, logger)
-
     pushInterval=None
     if options.pushInterval:
         pushInterval = int(options.pushInterval)
