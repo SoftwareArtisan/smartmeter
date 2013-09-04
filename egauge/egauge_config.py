@@ -190,7 +190,9 @@ class egcfg:
 
     def upgrade(s):
         uri = "/cgi-bin/protected/sw-upgrade"
-        return s.request(uri)
+        ret = s.request(uri)
+        ret1 = s.reboot()
+        return (ret, ret1)
 
     def reboot(s):
         uri = "/cgi-bin/protected/reboot"
