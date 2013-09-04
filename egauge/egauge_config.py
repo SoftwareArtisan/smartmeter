@@ -1,11 +1,11 @@
 import httplib2
 import httplib
-import urllib
-import os
 import logging
 import time
 import urlparse
 import urllib2
+from elementtree import ElementTree as ET
+from collections import namedtuple
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
@@ -119,8 +119,6 @@ class egcfg:
 
     @staticmethod
     def parse_installation(content):
-        from elementtree import ElementTree as ET
-        from collections import namedtuple
         teams = []
         totals = []
         channels = []
@@ -137,21 +135,22 @@ class egcfg:
         # <settings> <team> <tmember> if type=='local'
         team = root.findall('team')[0]
         tmembers = team.findall('tmember')
-        if len(tmembers)==0:
-            tmember = tmembers[0]
-        else:
-            for tm in tmembers:
-               ttype=tm.find('type').text 
-               if ttype == 'local':
-                   tmember=tm
-                   break
-        # tm is set now 
-        for reg in tm.findall('reg'):
-            rg=Reg._make((int(reg.find('id').text),
-                          reg.find('name').text,
-                          reg.find('val').text,
-                          reg.find('type').text))
-            teams.append(rg)
+        # this will be set correctly to 'local' tmember
+        tmember = None
+        
+        for tm in tmembers:
+           ttype=tm.find('type').text 
+           if ttype == 'local':
+               tmember=tm
+               break
+        # tmember is set now 
+        if tmember is not None:
+            for reg in tmember.findall('reg'):
+                rg=Reg._make((int(reg.find('id').text),
+                              reg.find('name').text,
+                              reg.find('val').text,
+                              reg.find('type').text))
+                teams.append(rg)
 
         # virtual registers
         total = root.findall('totals')[0]
@@ -210,8 +209,37 @@ class egcfg:
         print ret
         return ret
 
+    def status(s):
+        uri = "/status.xml"
+        """
+        <?xml version="1.0" encoding="UTF-8" ?>
+        <status>
+           <timestamp>0x52273a9b</timestamp>
+           <swRev>1.35</swRev>
+           <uptime>73442.63</uptime>
+           <lastWebReboot>1378229174</lastWebReboot>
+           <rebootReason>Software Reset</rebootReason>
+           <tempC>52.00</tempC>
+           <speed>12357142</speed>
+           <osvers>#319 Fri Mar 22 14:57:37 MDT 2013</osvers>
+           <model>egauge2</model>
+        </status>
+        """
+        resp, content = s.request(uri)
+
+        root = ET.XML(content)
+
+        st = {}
+        for child in root._children:
+            st[child.tag] = child.text
+
+        print st
+        return st
+
+
+
 actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
-            ,"getregisters", "setconfig", "netconfig", "setntp" ]
+            ,"getregisters", "setconfig", "netconfig", "setntp", "status" ]
 
 def cfg_opts():
     from optparse import OptionParser
@@ -259,6 +287,8 @@ def main_opts(parser, options, args):
         eg.upgrade()
     elif action == "netconfig":
         eg.netconfig()
+    elif action == "status":
+        eg.status()
     elif action == "getconfig":
         eg.getcfg(options.cfgfile)
     elif action == "setconfig":
