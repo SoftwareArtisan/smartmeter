@@ -32,7 +32,9 @@ CT_CFG_TABLE=[["5A",None,241.323,"","5.6@1:3@10:2.5@100"],
 [" 20A DC",359,-68.7,"","0@50"],
 [" 50A DC",359,-27.48,"","0@50"],
 ["100A DC",359,-13.74,"","0@50"],
-["150A DC",359,-9.16,"","0@50"]]
+["150A DC",359,-9.16,"","0@50"],
+["custom",None,0.000,"",""],
+]
 
 CT_CFG = dict( [ (r[0].strip(), r) for r in CT_CFG_TABLE ])
 CT_CFG_BY_MULTIPLIER = dict( [ ("{:.3f}".format(r[2]), r) for r in CT_CFG_TABLE ])
@@ -59,7 +61,7 @@ CT_MAP = {
         }
 CT_MAP_REV = dict( ( val, key ) for (key, val) in CT_MAP.items() )
 
-def get_ch_row(ct_type, calibration=None):
+def get_ch_row(ct_type, calibration=None, mul=None):
     """
     return a POST config row like 
     for a Rope 6" with calibration of 4.6200 
@@ -69,14 +71,20 @@ def get_ch_row(ct_type, calibration=None):
     or 400A and other CTS
     ch7=3.0750,15,,,5.6@1:3@8:1.5@100
     """
+    # for potential transformers the following are the defaults
+    if ct_type == 'PT':
+        return "-4.0030,-2058,,,"
+
     if ct_type not in CT_CFG:
         raise Exception ("Unknown CT type {}".format(ct_type))
 
     cfg = CT_CFG[ct_type]
     # all CT_CFG_TABLE have this in the front
-    ch_row = "{:.4f},15,".format(cfg[2])
+    if mul is None:
+        mul = cfg[2]
+    ch_row = "{:.4f},15,".format(mul)
 
-    if ct_type in [ 'Rope 6"', 'Rope CT' ]:
+    if ct_type in [ 'Rope 6', 'Rope CT' ]:
         if calibration is None:
             raise Exception('calibration is required for Rope 6" CT')
         ch_row += "{},{:.4f},{}".format(cfg[3], calibration, cfg[-1])
@@ -95,13 +103,17 @@ class TestEGCTCFG(unittest.TestCase):
         test_data = {
                 'Rope 6': "1.7090,15,int,4.6200,5@0:1@0.4:0@100",
                 '200A': "6.1480,15,,,",
-                '400A': "3.0750,15,,,5.6@1:3@8:1.5@100"
+                '400A': "3.0750,15,,,5.6@1:3@8:1.5@100",
+                'custom': "99.9900,15,,,"
                 }
 
         for ct_type, ref_ch_row in test_data.items():
             calibration = None
+            mul = None
             if ct_type == 'Rope 6':
                 calibration = 4.62
+            elif ct_type == 'custom':
+                mul = 99.99
 
-            ch_row = get_ch_row(ct_type, calibration)
+            ch_row = get_ch_row(ct_type, calibration, mul)
             self.assertEquals(ref_ch_row, ch_row)
