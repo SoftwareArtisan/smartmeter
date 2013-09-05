@@ -99,7 +99,17 @@ class egcfg:
         use json file to set register and CT configuration
         """
         s.getregisters()
+        content = open(ifile,'rt').read()
+        obj = json.loads(content)
+        channels, team, totals = s._from_json(obj)
+        body = s.get_installation_POST(channels, team, totals)
 
+        uri="/cgi-bin/protected/egauge-cfg"
+        resp, cont = s.request(uri,method="POST",body=body)
+
+        print resp, cont
+        return resp, cont
+ 
     def getregisters(s, ofile=None, skip_write=False):
         response, content = s.getcfg(skip_write=True)
         channels, team, totals = s.parse_installation(content)
@@ -164,7 +174,7 @@ class egcfg:
                 cts['cal'] = calibration
             CTs[ctpos] = cts
         
-        for regnum in range(1,17):
+        for regnum in range(17):
             if regnum in teammap:
                 reg = teammap[regnum]
                 REGS["R{}".format(regnum)] = {'name': reg.name,
@@ -205,7 +215,7 @@ class egcfg:
                               reg['val'],
                               reg['type']))
             teams.append(rg)
- 
+
         return channels, teams, totals
 
     @staticmethod
