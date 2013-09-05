@@ -10,6 +10,10 @@ import EG_CTCFG
 import json
 import StringIO
 
+Total = namedtuple('map', 'id,val')
+Reg = namedtuple('reg','id,name,val,type')
+Channel = namedtuple('ch', 'id,val')
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
 
@@ -90,12 +94,30 @@ class egcfg:
         print resp, cont
         return resp, cont
 
-    def regs(s):
+    def setregisters(s, ifile):
+        """
+        use json file to set register and CT configuration
+        """
+        s.getregisters()
+
+    def getregisters(s, ofile=None, skip_write=False):
         response, content = s.getcfg(skip_write=True)
         channels, team, totals = s.parse_installation(content)
+        if ofile==None: ofile = "%s.conf.%d.json" %(s.devurl.hostname,int(time.time()))
         # create ouput json
         obj = s._to_json(channels, team, totals)
-        print s._format_json(obj)
+        obj_str = s._format_json(obj)
+
+        if not skip_write:
+            if ofile!="--":
+                of=open(ofile,"wt")
+                print >> of, obj_str
+                of.close()
+                print "saved config to ", ofile
+            else:
+                print obj_str
+
+        return obj_str
 
     @staticmethod
     def _format_json(obj):
@@ -151,8 +173,40 @@ class egcfg:
         return obj
 
     @staticmethod
-    def _from_json(jsonstr):
-        pass
+    def _from_json(obj):
+        channels, teams, totals = [], [], []
+        # <ch0> ... <ch15> .. not all will always be available
+        CTs = obj['CTs']
+        for ch_id in range(16):
+            if ch_id not in EG_CTCFG.CT_MAP: continue
+
+            ctname = EG_CTCFG.CT_MAP[ch_id]
+            if ctname in [ "L1", "L2", "L3" ]:
+                channels.append(Channel._make((ch_id,EG_CTCFG.get_ch_row('PT'))))
+            else:
+                ct = CTs[ctname]
+                cal = None
+                if 'cal' in ct:
+                    cal = ct['cal']
+                mul = None
+                if 'mul' in ct:
+                    mul = ct['mul']
+                ch_row = EG_CTCFG.get_ch_row(ct['rating'], cal, mul)
+                channels.append(Channel._make((ch_id,ch_row)))
+
+        # process team --> registers
+        REGS = obj['Registers']
+        regnames = sorted(REGS.keys(), key=lambda rg: int(rg[1:]))
+        for idx, regname in enumerate(regnames):
+            ridx = regname[1:]
+            reg = REGS[regname]
+            rg=Reg._make((int(ridx),
+                              reg['name'],
+                              reg['val'],
+                              reg['type']))
+            teams.append(rg)
+ 
+        return channels, teams, totals
 
     @staticmethod
     def get_installation_POST(channels,team,totals):
@@ -183,9 +237,6 @@ class egcfg:
         teams = []
         totals = []
         channels = []
-        Total = namedtuple('map', 'id,val')
-        Reg = namedtuple('reg','id,name,val,type')
-        Channel = namedtuple('ch', 'id,val')
         root = ET.XML(content)
         # <ch0> ... <ch15> .. not all will always be available
         for ch_id in range(16):
@@ -304,7 +355,7 @@ class egcfg:
 
 
 actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
-            ,"getregisters", "setconfig", "netconfig", "setntp", "status" ]
+            ,"getregisters", "setconfig", "setregisters", "netconfig", "setntp", "status" ]
 
 def cfg_opts():
     from optparse import OptionParser
@@ -364,7 +415,9 @@ def main_opts(parser, options, args):
           exit(2)
         eg.setntp(options.ntpServer)
     elif action == "getregisters":
-        eg.regs()
+        eg.getregisters(options.cfgfile)
+    elif action == "setregisters":
+        eg.setregisters(options.cfgfile)
     
 if __name__ == "__main__":
     main()
