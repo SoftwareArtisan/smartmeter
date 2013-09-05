@@ -6,6 +6,9 @@ import urlparse
 import urllib2
 from elementtree import ElementTree as ET
 from collections import namedtuple
+import EG_CTCFG
+import json
+import StringIO
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
@@ -88,10 +91,68 @@ class egcfg:
         return resp, cont
 
     def regs(s):
-        response, content = s.getcfg()
+        response, content = s.getcfg(skip_write=True)
         channels, team, totals = s.parse_installation(content)
-        post_body = s.get_installation_POST(channels, team, totals)
-        print post_body
+        # create ouput json
+        obj = s._to_json(channels, team, totals)
+        print s._format_json(obj)
+
+    @staticmethod
+    def _format_json(obj):
+        op = StringIO.StringIO()
+        print >>op, '{"CTs": {'
+        CTs = obj['CTs']
+        ctnames = sorted(CTs.keys(), key=lambda nm: int(nm[2:]))
+        for idx, ctname in enumerate(ctnames):
+            if idx != 0: print >>op, ",",
+            print >>op, '"%s":'%(ctname), json.dumps(CTs[ctname])
+        print >>op, '}, "Registers": {'
+        REGS = obj['Registers']
+        regnames = sorted(REGS.keys(), key=lambda rg: int(rg[1:]))
+        for idx, regname in enumerate(regnames):
+            if idx != 0: print >>op, ",",
+            print >>op, '"%s":'%(regname), json.dumps(REGS[regname])
+        print >>op, '}}' 
+        return op.getvalue()
+
+    @staticmethod
+    def _to_json(channels, team, totals):
+        chmap = dict( (ch.id, ch) for ch in channels)
+        teammap = dict ( (tm.id, tm) for tm in team)
+
+        obj = {}
+        obj['Registers'] = REGS = {}
+        obj['CTs'] = CTs = {}
+
+        for ctnum in range(1,13):
+            ctpos = 'CT%d'%ctnum
+            ct = chmap[EG_CTCFG.CT_MAP_REV[ctpos]]
+            mul,_,_,calibration,_ = ct.val.split(',')
+            mul_str = "{:.3f}".format(float(mul))
+            
+            cts = {}
+            if mul_str in EG_CTCFG.CT_CFG_BY_MULTIPLIER:
+                ct_type = EG_CTCFG.CT_CFG_BY_MULTIPLIER[mul_str][0]
+            else:
+                ct_type = 'custom'
+                cts['mul'] = mul_str
+
+            cts['rating'] = ct_type
+            if calibration:
+                cts['cal'] = calibration
+            CTs[ctpos] = cts
+        
+        for regnum in range(1,17):
+            if regnum in teammap:
+                reg = teammap[regnum]
+                REGS["R{}".format(regnum)] = {'name': reg.name,
+                            'val': reg.val, 'type': reg.type}
+
+        return obj
+
+    @staticmethod
+    def _from_json(jsonstr):
+        pass
 
     @staticmethod
     def get_installation_POST(channels,team,totals):
@@ -130,7 +191,8 @@ class egcfg:
         for ch_id in range(16):
             chid="ch%d"%ch_id
             ch=root.find(chid)
-            if ch != None: channels.append(Channel._make((ch_id,ch.text)))
+            if ch != None: 
+                channels.append(Channel._make((ch_id,ch.text)))
 
         # <settings> <team> <tmember> if type=='local'
         team = root.findall('team')[0]
@@ -159,18 +221,19 @@ class egcfg:
 
         return channels, teams, totals
 
-    def getcfg(s, ofile=None):
+    def getcfg(s, ofile=None, skip_write=False):
         uri="/cgi-bin/protected/egauge-cfg"
         if ofile==None: ofile = "%s.conf.backup.%d" %(s.devurl.hostname,int(time.time()))
             
         resp, cont = s.request(uri)
-        if ofile!="--":
-            of=open(ofile,"wt")
-            print >> of, cont
-            of.close()
-            print "saved config to ", ofile
-        else:
-            print resp, cont
+        if not skip_write:
+            if ofile!="--":
+                of=open(ofile,"wt")
+                print >> of, cont
+                of.close()
+                print "saved config to ", ofile
+            else:
+                print resp, cont
         return resp, cont
 
     """
