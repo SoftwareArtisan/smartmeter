@@ -78,6 +78,12 @@ def get_ch_row(ct_type, calibration=None, mul=None):
     if ct_type not in CT_CFG:
         raise Exception ("Unknown CT type {}".format(ct_type))
 
+    if calibration is not None:
+        calibration = float(calibration)
+
+    if mul is not None:
+        mul = float(mul)
+
     cfg = CT_CFG[ct_type]
     # all CT_CFG_TABLE have this in the front
     if mul is None:
