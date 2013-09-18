@@ -21,7 +21,18 @@ class egcfg:
     def __init__(s,devurl,username,password,lg):
         if not devurl.startswith('http'):
             devurl = "http://"+devurl
-        s.devurl=urlparse.urlparse(devurl)
+        uu = urlparse.urlparse(devurl)
+        if "." not in uu.hostname:
+            # we will assume that it is egauge1910, or just 1910
+            if not uu.hostname.startswith("egauge"): 
+                hn = "egauge"+uu.hostname
+            else:
+                hn = uu.hostname
+            # add egauge.es at the end
+            hn += ".egaug.es"
+            uu = urlparse.urlparse("http://"+hn)
+
+        s.devurl=uu
         s.username=username
         s.password=password
         s.lg=lg
