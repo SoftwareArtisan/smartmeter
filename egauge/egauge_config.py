@@ -169,12 +169,15 @@ class egcfg:
         obj['Registers'] = REGS = {}
         obj['CTs'] = CTs = {}
 
-        for ctnum in chmap.keys():
-            ctpos = 'CT%d' % (ctnum)
-            ct = chmap[ctnum]
-            mul,_,_,calibration,_ = ct.val.split(',')
-            mul_str = "{:.3f}".format(float(mul))
-            
+        # we are only interested in CT1.. CT12 here
+        # The PTs are considered
+        for ctnum in range(1, 13):
+            visualCTNAME = 'CT%d' % (ctnum)
+            if visualCTNAME in EG_CTCFG.CT_MAP_REV and EG_CTCFG.CT_MAP_REV[visualCTNAME] in chmap:
+                ct = chmap[EG_CTCFG.CT_MAP_REV[visualCTNAME]]
+                mul, _, _, calibration, _ = ct.val.split(',')
+                mul_str = "{:.3f}".format(float(mul))
+                
             cts = {}
             if mul_str in EG_CTCFG.CT_CFG_BY_MULTIPLIER:
                 ct_type = EG_CTCFG.CT_CFG_BY_MULTIPLIER[mul_str][0]
@@ -185,7 +188,7 @@ class egcfg:
             cts['rating'] = ct_type
             if calibration:
                 cts['cal'] = calibration
-            CTs[ctpos] = cts
+            CTs[visualCTNAME] = cts
         
         for regnum in range(17):
             if regnum in teammap:
