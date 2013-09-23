@@ -170,7 +170,7 @@ class egcfg:
         obj['CTs'] = CTs = {}
 
         for ctnum in chmap.keys():
-            ctpos = 'CT%d' % (ctnum + 1)
+            ctpos = 'CT%d' % (ctnum)
             ct = chmap[ctnum]
             mul,_,_,calibration,_ = ct.val.split(',')
             mul_str = "{:.3f}".format(float(mul))
