@@ -351,6 +351,23 @@ class egcfg:
         print ret
         return ret
 
+    def get(s, uri):
+        ret = s.request(uri)
+        print ret[1]
+        return ret
+
+    def getpushstatus(s):
+        uri = "/cgi-bin/get?pushStatus"
+        ret = s.request(uri)
+        print ret[1]
+        return ret
+
+    def getntp(s):
+        uri = "/cgi-bin/get?ntp"
+        ret = s.request(uri)
+        print ret[1]
+        return ret
+
     def status(s):
         uri = "/status.xml"
         """
@@ -381,7 +398,8 @@ class egcfg:
 
 
 actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
-            ,"getregisters", "setconfig", "setregisters", "netconfig", "setntp", "status" ]
+            ,"getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp", 
+            "getpushstatus", "status" ]
 
 def cfg_opts():
     from optparse import OptionParser
@@ -395,6 +413,7 @@ def cfg_opts():
     parser.add_option( "--pushInterval")
     parser.add_option( "--pushURI")
     parser.add_option( "--ntpServer")
+    parser.add_option( "--path")
 
     return parser
  
@@ -431,6 +450,12 @@ def main_opts(parser, options, args):
         eg.netconfig()
     elif action == "status":
         eg.status()
+    elif action == "getntp":
+        eg.getntp()
+    elif action == "get":
+        eg.get(options.path)
+    elif action == "getpushstatus":
+        eg.getpushstatus()
     elif action == "getconfig":
         eg.getcfg(options.cfgfile)
     elif action == "setconfig":
