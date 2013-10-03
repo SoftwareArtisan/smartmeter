@@ -436,7 +436,6 @@ def main_opts(parser, options, args):
         exit(2)
     eg=egcfg(device_url, options.username, options.password, logger)
 
-    import pdb; pdb.set_trace()
     pushInterval=None
     if options.pushInterval:
         pushInterval = int(options.pushInterval)
