@@ -399,7 +399,7 @@ class egcfg:
 
 actions = [ "register", "de-register", "reboot", "upgrade" , "getconfig"
             ,"getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp", 
-            "getpushstatus", "status" ]
+            "getpushstatus", "status", "get" ]
 
 def cfg_opts():
     from optparse import OptionParser
@@ -435,6 +435,8 @@ def main_opts(parser, options, args):
         parser.print_help()
         exit(2)
     eg=egcfg(device_url, options.username, options.password, logger)
+
+    import pdb; pdb.set_trace()
     pushInterval=None
     if options.pushInterval:
         pushInterval = int(options.pushInterval)
