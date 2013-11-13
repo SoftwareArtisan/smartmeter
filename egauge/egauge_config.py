@@ -357,7 +357,7 @@ class egcfg:
         ret1 = s.reboot()
         return (ret, ret1)
 
-    def reboot(s, timeout=0):
+    def reboot(s):
         uri = "/cgi-bin/protected/reboot"
         ret = None
         try:
@@ -366,8 +366,8 @@ class egcfg:
             # it is possible to get this because the server reboots
             pass
 
-        if timeout != 0:
-            s.wait(timeout)
+        if s.timeout != 0:
+            s.wait()
 
         return ret
 
@@ -394,14 +394,14 @@ class egcfg:
         print ret[1]
         return ret
 
-    def wait(s, timeout=30):
+    def wait(s):
         """
         wait for at most timeout seconds to check if the server is up
         """
         found = False
         waited = 0
         step = 2
-        while waited <= timeout:
+        while waited <= s.timeout:
             time.sleep(step)
             waited += step
             try:
@@ -493,6 +493,7 @@ def main_opts(parser, options, args):
         parser.print_help()
         exit(2)
     eg = egcfg(device_url, options.username, options.password, logger)
+    eg.timeout = int(options.timeout)
 
     pushInterval = None
     if options.pushInterval:
@@ -502,7 +503,7 @@ def main_opts(parser, options, args):
     if action == "de-register":
         eg.register("", pushInterval, options.seconds)
     elif action == "reboot":
-        eg.reboot(int(options.timeout))
+        eg.reboot()
     elif action == "upgrade":
         eg.upgrade(options.branch)
     elif action == "upgrade-kernel":
@@ -522,7 +523,7 @@ def main_opts(parser, options, args):
     elif action == "setconfig":
         eg.setcfg(options.cfgfile)
     elif action == "wait":
-        eg.wait(int(options.timeout))
+        eg.wait()
     elif action == "setntp":
         if options.ntpServer is None:
             print "ntpServer is required for setntp"
