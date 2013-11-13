@@ -343,8 +343,10 @@ class egcfg:
         s.request(uri, method="POST", body=body)
         print body
 
-    def upgrade(s):
-        uri = "/cgi-bin/protected/sw-upgrade"
+    def upgrade(s, branch):
+        uri = "/cgi-bin/protected/sw-upgrade?branch="
+        if branch != "stable":
+            uri += branch
         ret = s.request(uri)
         ret1 = s.reboot()
         return (ret, ret1)
@@ -412,7 +414,7 @@ class egcfg:
 
 
 actions = [
-    "register", "de-register", "reboot", "upgrade", "getconfig", 
+    "register", "de-register", "reboot", "upgrade", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
     "getpushstatus", "status", "get"]
 
@@ -427,6 +429,7 @@ def cfg_opts():
     parser.add_option("--password", default="default")
     parser.add_option("--cfgfile", default=None,
                       help="-- will write to stdout")
+    parser.add_option("--branch", help="branch to use for upgrades, default=stable", default="stable")
     parser.add_option("--pushInterval")
     parser.add_option("--pushURI")
     parser.add_option("--ntpServer")
@@ -465,7 +468,7 @@ def main_opts(parser, options, args):
     elif action == "reboot":
         eg.reboot()
     elif action == "upgrade":
-        eg.upgrade()
+        eg.upgrade(options.branch)
     elif action == "netconfig":
         eg.netconfig()
     elif action == "status":
