@@ -21,7 +21,13 @@ if [[ ${STEP} == "1" ]];then
   ${CFG} setregisters ${DEVICE} --cfgfile ${WD}/empty_config.json "$@" ${EXTRA_ARGS}
   ${CFG} upgrade ${DEVICE} "$@"  ${EXTRA_ARGS}
 elif [[ ${STEP} == "2" ]];then
-  ${CFG} upgrade-kernel ${DEVICE} "$@"  ${EXTRA_ARGS}
-  ${CFG} setregisters ${DEVICE} --cfgfile ${WD}/${DEVICE}_backup.json "$@"  ${EXTRA_ARGS}
-  ${CFG} reboot ${DEVICE} "$@"  ${EXTRA_ARGS}
+  ${CFG} is-caught-up ${DEVICE} "$@"  ${EXTRA_ARGS}
+  ret=$?
+  if [[ ${ret} -eq 0 ]];then
+      ${CFG} upgrade-kernel ${DEVICE} "$@"  ${EXTRA_ARGS}
+      ${CFG} setregisters ${DEVICE} --cfgfile ${WD}/${DEVICE}_backup.json "$@"  ${EXTRA_ARGS}
+      ${CFG} reboot ${DEVICE} "$@"  ${EXTRA_ARGS}
+  else
+      echo "${DEVICE} is not caught up yet"
+  fi
 fi
