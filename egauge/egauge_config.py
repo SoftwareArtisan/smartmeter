@@ -362,9 +362,9 @@ class egcfg:
         ret = None
         try:
             ret = s.request(uri)
-        except httplib.IncompleteRead as e:
+        except httplib.IncompleteRead:
             # it is possible to get this because the server reboots
-            print "harmless received ", e
+            pass
 
         return ret
 
