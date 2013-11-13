@@ -351,6 +351,12 @@ class egcfg:
         ret1 = s.reboot()
         return (ret, ret1)
 
+    def upgrade_kernel(s):
+        uri = "/cgi-bin/protected/sw-upgrade?kernel"
+        ret = s.request(uri)
+        ret1 = s.reboot()
+        return (ret, ret1)
+
     def reboot(s):
         uri = "/cgi-bin/protected/reboot"
         ret = None
@@ -414,7 +420,7 @@ class egcfg:
 
 
 actions = [
-    "register", "de-register", "reboot", "upgrade", "getconfig",
+    "register", "de-register", "reboot", "upgrade", "upgrade-kernel", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
     "getpushstatus", "status", "get"]
 
@@ -469,6 +475,8 @@ def main_opts(parser, options, args):
         eg.reboot()
     elif action == "upgrade":
         eg.upgrade(options.branch)
+    elif action == "upgrade-kernel":
+        eg.upgrade_kernel()
     elif action == "netconfig":
         eg.netconfig()
     elif action == "status":
