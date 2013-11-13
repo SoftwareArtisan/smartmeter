@@ -11,6 +11,7 @@ from collections import namedtuple
 import EG_CTCFG
 import json
 import StringIO
+from datetime import datetime, timedelta
 
 Total = namedtuple('map', 'id,val')
 Reg = namedtuple('reg', 'id,name,val,type')
@@ -351,6 +352,33 @@ class egcfg:
         ret1 = s.reboot()
         return (ret, ret1)
 
+    def current_readings(s):
+        """
+        <?xml version="1.0" encoding="UTF-8" ?>
+        <data serial="0x3a2e6d1f">
+        <ts>1384379125</ts>
+        <gen>78538</gen>
+        <r t="P" n="CT1"><v>-55847</v><i>-1</i></r>
+        <r t="P" n="CT2"><v>-3671</v><i>0</i></r>
+        <r t="P" n="CT3"><v>-14775</v><i>0</i></r>
+        """
+        uri = "/cgi-bin/egauge?v1&inst"
+        resp, content = s.request(uri)
+        root = ET.XML(content)
+        dt = None
+        for child in root:
+            if child.tag == "ts":
+                dt = datetime.utcfromtimestamp(int(child.text))
+                break
+
+        now = datetime.utcnow()
+        print "Egauge time is {},  current time {}".format(dt, now)
+        if abs(now - dt) < timedelta(minutes=10):
+            ok = True
+        else:
+            ok = False
+        return (ok, dt, root[2:])
+
     def upgrade_kernel(s):
         uri = "/cgi-bin/protected/sw-upgrade?kernel"
         ret = s.request(uri)
@@ -451,7 +479,7 @@ class egcfg:
 actions = [
     "register", "de-register", "reboot", "upgrade", "upgrade-kernel", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
-    "getpushstatus", "status", "get", "wait"]
+    "getpushstatus", "status", "get", "wait", "is-caught-up"]
 
 
 def cfg_opts():
@@ -514,6 +542,12 @@ def main_opts(parser, options, args):
         eg.status()
     elif action == "getntp":
         eg.getntp()
+    elif action == "is-caught-up":
+        ok, dt, data = eg.current_readings()
+        if ok:
+            exit(0)
+        else:
+            exit(-1)
     elif action == "get":
         eg.get(options.path)
     elif action == "getpushstatus":
