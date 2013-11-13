@@ -357,7 +357,7 @@ class egcfg:
         ret1 = s.reboot()
         return (ret, ret1)
 
-    def reboot(s):
+    def reboot(s, timeout=0):
         uri = "/cgi-bin/protected/reboot"
         ret = None
         try:
@@ -365,6 +365,9 @@ class egcfg:
         except httplib.IncompleteRead:
             # it is possible to get this because the server reboots
             pass
+
+        if timeout != 0:
+            s.wait(timeout)
 
         return ret
 
@@ -390,6 +393,32 @@ class egcfg:
         ret = s.request(uri)
         print ret[1]
         return ret
+
+    def wait(s, timeout=30):
+        """
+        wait for at most timeout seconds to check if the server is up
+        """
+        found = False
+        waited = 0
+        step = 2
+        while waited <= timeout:
+            time.sleep(step)
+            waited += step
+            try:
+                resp, content = s.request("/status.xml")
+                found = True
+                break
+            except urllib2.HTTPError as herr:
+                if hasattr(herr, 'code') and herr.code == 404:
+                    pass
+                else:
+                    raise
+            step += 1
+
+        print "found={} after waiting for {} sec".format(found, waited)
+        if found:
+            s.status()
+        return found
 
     def status(s):
         uri = "/status.xml"
@@ -422,7 +451,7 @@ class egcfg:
 actions = [
     "register", "de-register", "reboot", "upgrade", "upgrade-kernel", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
-    "getpushstatus", "status", "get"]
+    "getpushstatus", "status", "get", "wait"]
 
 
 def cfg_opts():
@@ -432,6 +461,7 @@ def cfg_opts():
     parser.add_option("--seconds", default=False, action="store_true",
                       help="will try to fetch seconds data if specified")
     parser.add_option("--username", default="owner")
+    parser.add_option("--timeout", default="0")
     parser.add_option("--password", default="default")
     parser.add_option("--cfgfile", default=None,
                       help="-- will write to stdout")
@@ -472,7 +502,7 @@ def main_opts(parser, options, args):
     if action == "de-register":
         eg.register("", pushInterval, options.seconds)
     elif action == "reboot":
-        eg.reboot()
+        eg.reboot(int(options.timeout))
     elif action == "upgrade":
         eg.upgrade(options.branch)
     elif action == "upgrade-kernel":
@@ -491,6 +521,8 @@ def main_opts(parser, options, args):
         eg.getcfg(options.cfgfile)
     elif action == "setconfig":
         eg.setcfg(options.cfgfile)
+    elif action == "wait":
+        eg.wait(int(options.timeout))
     elif action == "setntp":
         if options.ntpServer is None:
             print "ntpServer is required for setntp"
