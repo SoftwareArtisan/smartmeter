@@ -381,9 +381,17 @@ class egcfg:
         root = ET.XML(content)
         ts = int(root[0].get('time_stamp'), 16)
         dt = datetime.utcfromtimestamp(ts)
-        now = datetime.utcnow()
-        print "Egauge time is {},  current time {}".format(dt, now)
-        if abs(now - dt) < timedelta(minutes=10):
+
+        uri = "/cgi-bin/egauge?v1&inst"
+        resp, content = s.request(uri)
+        root = ET.XML(content)
+        now = None
+        for child in root:
+            if child.tag == "ts":
+                now = datetime.utcfromtimestamp(int(child.text))
+                break
+        print "Egauge database time is {},  egauge current time {}".format(dt, now)
+        if abs(now - dt) < timedelta(minutes=2):
             ok = True
         else:
             ok = False
