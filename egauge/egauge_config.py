@@ -355,22 +355,32 @@ class egcfg:
     def current_readings(s):
         """
         <?xml version="1.0" encoding="UTF-8" ?>
-        <data serial="0x3a2e6d1f">
-        <ts>1384379125</ts>
-        <gen>78538</gen>
-        <r t="P" n="CT1"><v>-55847</v><i>-1</i></r>
-        <r t="P" n="CT2"><v>-3671</v><i>0</i></r>
-        <r t="P" n="CT3"><v>-14775</v><i>0</i></r>
+        <!DOCTYPE group PUBLIC "-//ESL/DTD eGauge 1.0//EN" "http://www.egauge.net/DTD/egauge-hist.dtd">
+        <group serial="0x7da9fd6d">
+        <data columns="15" time_stamp="0x52853f51" time_delta="120" delta="true" epoch="0x50f07c24">
+         <cname t="P">MAIN.1</cname>
+         <cname t="P">MAIN.2</cname>
+         <cname t="P">MAIN.3</cname>
+         <cname t="P">MAIN-CT04.1</cname>
+         <cname t="P">MAIN-CT05.2</cname>
+         <cname t="P">MAIN-CT06.3</cname>
+         <cname t="P">MAIN-CT07.1</cname>
+         <cname t="P">MAIN-CT08.2</cname>
+         <cname t="P">MAIN-CT09.3</cname>
+         <cname t="P">MAIN-CT10.3</cname>
+         <cname t="P">MAIN-CT11.2</cname>
+         <cname t="P">MAIN-CT12.1</cname>
+         <cname t="S">MAIN.1*</cname>
+         <cname t="S">MAIN.2*</cname>
+         <cname t="S">MAIN.3*</cname>
+        </data>
+        </group>
         """
-        uri = "/cgi-bin/egauge?v1&inst"
+        uri = "/cgi-bin/egauge-show?e&m&C&s=1&n=1"
         resp, content = s.request(uri)
         root = ET.XML(content)
-        dt = None
-        for child in root:
-            if child.tag == "ts":
-                dt = datetime.utcfromtimestamp(int(child.text))
-                break
-
+        ts = int(root[0].get('time_stamp'), 16)
+        dt = datetime.utcfromtimestamp(ts)
         now = datetime.utcnow()
         print "Egauge time is {},  current time {}".format(dt, now)
         if abs(now - dt) < timedelta(minutes=10):
