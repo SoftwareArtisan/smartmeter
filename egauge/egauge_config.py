@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 Total = namedtuple('map', 'id,val')
 Reg = namedtuple('reg', 'id,name,val,type')
 Channel = namedtuple('ch', 'id,val')
+User = namedtuple('user', 'id,user,priv')
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
@@ -98,7 +99,7 @@ class egcfg:
         s.getcfg()
 
         content = open(ifile, 'rt').read()
-        channels, team, totals = s.parse_installation(content)
+        channels, team, totals, users = s.parse_installation(content)
         body = s.get_installation_POST(channels, team, totals)
 
         uri = "/cgi-bin/protected/egauge-cfg"
@@ -135,7 +136,7 @@ class egcfg:
 
     def getregisters(s, ofile=None, skip_write=False):
         response, content = s.getcfg(skip_write=True)
-        channels, team, totals = s.parse_installation(content)
+        channels, team, totals, users = s.parse_installation(content)
         if ofile is None:
             ofile = "%s.conf.%d.json" % (s.devurl.hostname, int(time.time()))
         # create ouput json
@@ -278,6 +279,7 @@ class egcfg:
         teams = []
         totals = []
         channels = []
+        users = []
         root = ET.XML(content)
         # <ch0> ... <ch15> .. not all will always be available
         for ch_id in range(16):
@@ -306,12 +308,25 @@ class egcfg:
                                 reg.find('type').text))
                 teams.append(rg)
 
+        # <user1>owner</user1>
+        # <priv1>unlimited_save, view_settings</priv1>
+        # <user2>user</user2>
+        # <priv2>view_settings</priv2>
+        # <user3>QSR</user3>
+        # <priv3>local_save, view_settings</priv3>
+        for uid in range(1, 10):
+            usr = root.find("user{}".format(uid))
+            if usr is None:
+                break
+            prv = root.find("priv{}".format(uid))
+            users.append(User._make((uid, usr.text, prv.text)))
+
         # virtual registers
         total = root.findall('totals')[0]
         for idx, mp in enumerate(total.findall('map')):
             totals.append(Total._make((idx, mp.text)))
 
-        return channels, teams, totals
+        return channels, teams, totals, users
 
     def getcfg(s, ofile=None, skip_write=False):
         uri = "/cgi-bin/protected/egauge-cfg"
