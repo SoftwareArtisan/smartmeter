@@ -8,7 +8,7 @@
 WD=$(dirname $0)
 WD=$(cd ${WD}; pwd)
 
-CFG=${WD}/egauge_config.py
+CFG=$(ls -1 ${WD}/*_config.py)
 
 STEP=${1:?"Step 1 or 2 -- 1 before time catchup, 2 after time catchup"}
 DEVICE=${2:?"egauge device id"}
