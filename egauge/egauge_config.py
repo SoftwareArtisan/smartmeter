@@ -557,6 +557,7 @@ def main_opts(parser, options, args):
     eg.timeout = int(options.timeout)
 
     pushInterval = None
+    retval = 0
     if options.pushInterval:
         pushInterval = int(options.pushInterval)
     if action == "register":
@@ -577,10 +578,8 @@ def main_opts(parser, options, args):
         eg.getntp()
     elif action == "is-caught-up":
         ok, dt, data = eg.current_readings()
-        if ok:
-            exit(0)
-        else:
-            exit(-1)
+        if not ok:
+            retval = -1
     elif action == "get":
         eg.get(options.path)
     elif action == "getpushstatus":
@@ -600,6 +599,9 @@ def main_opts(parser, options, args):
         eg.getregisters(options.cfgfile)
     elif action == "setregisters":
         eg.setregisters(options.cfgfile)
+
+    if hasattr(options, "exit") is False or options.exit is True:
+        exit(retval)
 
 if __name__ == "__main__":
     main()
