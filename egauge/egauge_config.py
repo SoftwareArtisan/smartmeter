@@ -22,6 +22,36 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("eg_cfg")
 
 
+class REG(object):
+    def __repr__(self):
+        return self.__dict__.__repr__()
+
+
+def parse_livevals(cont):
+    root = ET.XML(cont)
+    channels = {}
+    for child in root:
+        if child.tag in ('voltage', 'current'):
+            channels[EG_CTCFG.CT_MAP[int(child.attrib['ch'])]] = child.text
+
+    regs = []
+    ctnum = 1
+    for child in root:
+        if child.tag == 'cpower':
+            rg = REG()
+            rg.ct = EG_CTCFG.CT_MAP[int(child.attrib['i'])]
+            rg.l = EG_CTCFG.CT_MAP[int(child.attrib['u'])]
+            ctnum += 1
+            regs.append(rg)
+            rg.I = float(channels[rg.ct])
+            rg.V = float(channels[rg.l])
+            rg.P = float(child.text)
+            rg.reg = child.attrib['src']
+            rg.pf = abs(rg.P / (rg.I * rg.V))
+
+    return int(root.find('timestamp').text), regs
+
+
 class egcfg:
 
     def __init__(s, devurl, username, password, lg):
@@ -45,12 +75,13 @@ class egcfg:
         s.req = httplib2.Http(timeout=60)
         s.req.add_credentials(username, password)   # Digest Authentication
 
-    def request(s, uri, method="GET", body=None):
+    def request(s, uri, method="GET", body=None, verbose=True):
         if not uri.startswith("/"):
             uri = "/" + uri
         requrl = s.devurl.geturl() + uri
         success = False
-        print requrl
+        if verbose:
+            print requrl
         response, content = s.req.request(requrl, method=method,
                                           headers={'Connection': 'Keep-Alive',
                                                    'accept-encoding': 'gzip',
@@ -481,6 +512,33 @@ class egcfg:
             s.status()
         return found
 
+    def channelchecker(s, samples=10):
+        """
+        return live vals monitored for give number of samples
+        """
+        uri = "/cgi-bin/egauge?noteam"
+
+        chan = []
+        for idx in range(samples):
+            resp, content = s.request(uri, verbose=False)
+            ts, regs = parse_livevals(content)
+            chan.append((ts, regs))
+            if idx == 0:
+                print "time",
+                for rg in regs:
+                    print rg.ct,
+                print ""
+                print "time",
+                for rg in regs:
+                    print rg.reg,
+                print ""
+            print ts,
+            for rg in regs:
+                print "{}/({:.3f})".format(rg.P, rg.pf),
+            print ""
+
+        return chan
+
     def status(s):
         uri = "/status.xml"
         """
@@ -512,7 +570,7 @@ class egcfg:
 actions = [
     "register", "de-register", "reboot", "upgrade", "upgrade-kernel", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
-    "getpushstatus", "status", "get", "wait", "is-caught-up"]
+    "getpushstatus", "status", "get", "wait", "is-caught-up", "channelchecker"]
 
 
 def cfg_opts():
@@ -523,6 +581,7 @@ def cfg_opts():
                       help="will try to fetch seconds data if specified")
     parser.add_option("--username", default="owner")
     parser.add_option("--timeout", default="0")
+    parser.add_option("--samples", default="10")
     parser.add_option("--password", default="default")
     parser.add_option("--cfgfile", default=None,
                       help="-- will write to stdout")
@@ -564,6 +623,8 @@ def main_opts(parser, options, args):
         eg.register(options.pushURI, pushInterval, options.seconds)
     if action == "de-register":
         eg.register("", pushInterval, options.seconds)
+    if action == "channelchecker":
+        eg.channelchecker(int(options.samples))
     elif action == "reboot":
         eg.reboot()
     elif action == "upgrade":
