@@ -603,7 +603,7 @@ actions = [
     "register", "de-register", "reboot", "upgrade", "upgrade-kernel", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
     "getpushstatus", "status", "get", "wait", "is-caught-up", "channelchecker",
-    "rotate-voltage-config"]
+    "rotate-voltage-config", "auto-phase-match"]
 
 
 def cfg_opts():
@@ -695,6 +695,9 @@ def main_opts(parser, options, args):
         eg.setregisters(options.cfgfile)
     elif action == "rotate-voltage-config":
         eg.rotate_voltage_cofig()
+    elif action == "auto-phase-match":
+        import egauge_auto_config
+        data = egauge_auto_config.auto_phase_match(eg)
 
     if hasattr(options, "exit") is False or options.exit is True:
         exit(retval)
