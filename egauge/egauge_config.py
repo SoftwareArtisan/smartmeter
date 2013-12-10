@@ -149,11 +149,40 @@ class egcfg:
         print resp, cont
         return resp, cont
 
-    def setregisters(s, ifile):
+    def rotate_voltage_cofig(s, keep_phase_designator=True):
+        """
+        if keep_phase_designator then rename registers to correct voltage val
+        """
+        (channels, team, totals, users) = s.getregisters(get_vals=True)
+        # rotate
+        rotated_team = []
+        for reg in team:
+            if reg.type == 'P':
+                phase = int(reg.val[-1]) - 1
+                newphase = (phase + 1) % 3
+                if reg.name[-1] == reg.val[-1] and keep_phase_designator:
+                    newname = "{}.{}".format(reg.name[:-2], newphase + 1)
+                else:
+                    newname = reg.name
+
+                newval = "{}*L{}".format(reg.val[:-3], newphase + 1)
+                rotated_team.append(Reg._make((reg.id, newname, newval, reg.type)))
+            else:
+                rotated_team.append(reg)
+
+        # rotate done
+        body = s.get_installation_POST(channels, rotated_team, totals)
+        uri = "/cgi-bin/protected/egauge-cfg"
+        resp, cont = s.request(uri, method="POST", body=body)
+        print resp, cont
+        return resp, cont
+
+    def setregisters(s, ifile, skip_backup=False):
         """
         use json file to set register and CT configuration
         """
-        s.getregisters()
+        if not skip_backup:
+            s.getregisters()
         content = open(ifile, 'rt').read()
         obj = json.loads(content)
         channels, team, totals = s._from_json(obj)
@@ -165,7 +194,7 @@ class egcfg:
         print resp, cont
         return resp, cont
 
-    def getregisters(s, ofile=None, skip_write=False):
+    def getregisters(s, ofile=None, skip_write=False, get_vals=False):
         response, content = s.getcfg(skip_write=True)
         channels, team, totals, users = s.parse_installation(content)
         if ofile is None:
@@ -183,7 +212,10 @@ class egcfg:
             else:
                 print obj_str
 
-        return obj_str
+        if get_vals:
+            return ((channels, team, totals, users))
+        else:
+            return obj_str
 
     @staticmethod
     def _format_json(obj):
@@ -570,7 +602,8 @@ class egcfg:
 actions = [
     "register", "de-register", "reboot", "upgrade", "upgrade-kernel", "getconfig",
     "getregisters", "setconfig", "setregisters", "netconfig", "getntp", "setntp",
-    "getpushstatus", "status", "get", "wait", "is-caught-up", "channelchecker"]
+    "getpushstatus", "status", "get", "wait", "is-caught-up", "channelchecker",
+    "rotate-voltage-config"]
 
 
 def cfg_opts():
@@ -660,6 +693,8 @@ def main_opts(parser, options, args):
         eg.getregisters(options.cfgfile)
     elif action == "setregisters":
         eg.setregisters(options.cfgfile)
+    elif action == "rotate-voltage-config":
+        eg.rotate_voltage_cofig()
 
     if hasattr(options, "exit") is False or options.exit is True:
         exit(retval)
