@@ -42,9 +42,11 @@ def auto_phase_match(cfg, samples=30):
     else:
         for i in range(3):
             data.append(measure_and_rotate(cfg, samples))
-
-        from cloud.serialization.cloudpickle import dump
-        dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
+        try:
+            from cloud.serialization.cloudpickle import dump
+            dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
+        except ImportError as ex:
+            print "unable to save pckl file", ex
 
     team = phase_match(data)
 
