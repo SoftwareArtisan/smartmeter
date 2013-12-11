@@ -7,6 +7,8 @@
 
 import pickle
 from egauge_config import Reg
+import time
+
 
 """
     1. fetch current config
@@ -36,9 +38,18 @@ def auto_phase_match(cfg, samples=8):
         data.append(measure_and_rotate(cfg, samples))
 
     from cloud.serialization.cloudpickle import dump
-    dump(data, open("/tmp/{}.pckl".format(cfg.devurl.netloc), "wb"))
-    print data
-    return data
+    dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
+
+    team = phase_match(data)
+    channels = data[0][0][0]
+    totals = data[0][0][2]
+    body = cfg.get_installation_POST(channels, team, totals)
+    uri = "/cgi-bin/protected/egauge-cfg"
+    resp, cont = cfg.request(uri, method="POST", body=body)
+
+    cfg.reboot()
+
+    return ((channels, team, totals))
 
 # For current less than this we cannot be certain
 MIN_CURRENT = 3.0
@@ -98,7 +109,9 @@ def phase_match(data):
     return newRegs
 
 
-data9 = pickle.load(open("tests/egauge6599.egaug.es.pckl"))
-data8 = pickle.load(open("tests/egauge6598.egaug.es.pckl"))
-data7 = pickle.load(open("tests/egauge7227.egaug.es.pckl"))
+def _load_test_data():
+    data9 = pickle.load(open("tests/egauge6599.egaug.es.pckl"))
+    data8 = pickle.load(open("tests/egauge6598.egaug.es.pckl"))
+    data7 = pickle.load(open("tests/egauge7227.egaug.es.pckl"))
 
+    return data7, data8, data9
