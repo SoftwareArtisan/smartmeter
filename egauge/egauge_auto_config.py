@@ -135,10 +135,10 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
         if name in by_name:
             print "collision old:", idx, by_name[name]
             print "collision new:", idx, cts
-            name = "COLLISION_" + name
-
-        by_name[name] = cts
-        newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
+            #name = "COLLISION_" + name
+        else:
+            by_name[name] = cts
+            newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
 
     return newRegs
 
