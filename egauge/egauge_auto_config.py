@@ -8,6 +8,7 @@
 import pickle
 from egauge_config import Reg
 import time
+import os
 
 
 """
@@ -32,26 +33,32 @@ def measure_and_rotate(cfg, samples=30):
     return ((config, chdata))
 
 
-def auto_phase_match(cfg, samples=8):
+def auto_phase_match(cfg, samples=30):
     data = []
-    for i in range(3):
-        data.append(measure_and_rotate(cfg, samples))
 
-    from cloud.serialization.cloudpickle import dump
-    dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
+    if 'PCKL_FILE' in os.environ:
+        data = pickle.load(open(os.environ['PCKL_FILE'], "rb"))
+    else:
+        for i in range(3):
+            data.append(measure_and_rotate(cfg, samples))
+
+        from cloud.serialization.cloudpickle import dump
+        dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
 
     team = phase_match(data)
 
     for tt in team:
         print tt
-    return
+
     channels = data[0][0][0]
     totals = data[0][0][2]
-    body = cfg.get_installation_POST(channels, team, totals)
-    uri = "/cgi-bin/protected/egauge-cfg"
-    resp, cont = cfg.request(uri, method="POST", body=body)
+    #from IPython.core.debugger import Pdb; Pdb().set_trace()
 
-    cfg.reboot()
+    if 'PCKL_FILE' not in os.environ:
+        body = cfg.get_installation_POST(channels, team, totals)
+        uri = "/cgi-bin/protected/egauge-cfg"
+        resp, cont = cfg.request(uri, method="POST", body=body)
+        cfg.reboot()
 
     return ((channels, team, totals))
 
@@ -59,7 +66,7 @@ def auto_phase_match(cfg, samples=8):
 MIN_CURRENT = 3.0
 
 
-def phase_match(data, verbose=False):
+def phase_match(data, enforce_phase_suffix=True, verbose=True):
     """
     look at data and output the best configuration
     """
@@ -90,7 +97,7 @@ def phase_match(data, verbose=False):
             if by_pf[0][1].P < 0.0:
                 if by_pf[0][1].I < 10.0:
                     # low current
-                    if by_pf[1][1].P > 0.0 and by_pf[1][1].pf > 0.5:
+                    if len(by_pf) > 1 and by_pf[1][1].P > 0.0 and by_pf[1][1].pf > 0.5:
                         # low pf at low load for motors
                         cts = by_pf[1]
                     else:
@@ -115,7 +122,8 @@ def phase_match(data, verbose=False):
             else:
                 val = '-' + val
         name = reg.name
-        name = "{}.{}".format(name[:-2], cts[1].l[-1])
+        if enforce_phase_suffix:
+            name = "{}.{}".format(name.rpartition(".")[0], cts[1].l[-1])
 
         newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
 
