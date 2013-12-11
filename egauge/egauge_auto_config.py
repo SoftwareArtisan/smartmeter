@@ -61,6 +61,7 @@ def auto_phase_match(cfg, samples=30):
         body = cfg.get_installation_POST(channels, team, totals)
         uri = "/cgi-bin/protected/egauge-cfg"
         resp, cont = cfg.request(uri, method="POST", body=body)
+        cfg.wait()
         cfg.reboot()
 
     return ((channels, team, totals))
