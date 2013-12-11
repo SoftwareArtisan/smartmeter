@@ -29,6 +29,7 @@ def measure_and_rotate(cfg, samples=30):
 
     cfg.rotate_voltage_cofig()
     cfg.timeout = 25
+    cfg.wait()
     cfg.reboot()
     return ((config, chdata))
 
@@ -83,6 +84,8 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
         for idx, nr in enumerate(newRegs):
             print idx, nr
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
+
+    by_name = {}
     for idx in range(len(rot[0])):
         ct = [(dx, rot[dx][idx]) for dx in range(3) if rot[dx][idx].I > MIN_CURRENT]
         flip = False
@@ -100,6 +103,7 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
                     if len(by_pf) > 1 and by_pf[1][1].P > 0.0 and by_pf[1][1].pf > 0.5:
                         # low pf at low load for motors
                         cts = by_pf[1]
+                        print "Potentially motor running at low load", cts
                     else:
                         # flip CT
                         flip = True
@@ -125,6 +129,12 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
         if enforce_phase_suffix:
             name = "{}.{}".format(name.rpartition(".")[0], cts[1].l[-1])
 
+        if name in by_name:
+            print "collision old:", idx, by_name[name]
+            print "collision new:", idx, cts
+            name = "COLLISION_" + name
+
+        by_name[name] = cts
         newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
 
     return newRegs
