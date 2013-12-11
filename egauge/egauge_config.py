@@ -161,7 +161,7 @@ class egcfg:
                 phase = int(reg.val[-1]) - 1
                 newphase = (phase + 1) % 3
                 if reg.name[-1] == reg.val[-1] and keep_phase_designator:
-                    newname = "{}.{}".format(reg.name[:-2], newphase + 1)
+                    newname = "{}.{}".format(reg.name.rpartition(".")[0], newphase + 1)
                 else:
                     newname = reg.name
 
@@ -363,6 +363,7 @@ class egcfg:
                 tmember = tm
                 break
         # tmember is set now
+        #from IPython.core.debugger import Pdb; Pdb().set_trace()
         if tmember is not None:
             for reg in tmember.findall('reg'):
                 rg = Reg._make((int(reg.find('id').text),
@@ -605,6 +606,8 @@ actions = [
     "getpushstatus", "status", "get", "wait", "is-caught-up", "channelchecker",
     "rotate-voltage-config", "auto-phase-match"]
 
+DEFAULT_SAMPLES = 10
+
 
 def cfg_opts():
     from optparse import OptionParser
@@ -612,9 +615,11 @@ def cfg_opts():
                 action = {}""".format("|".join(actions)))
     parser.add_option("--seconds", default=False, action="store_true",
                       help="will try to fetch seconds data if specified")
+    parser.add_option("--skip-backup", default=False, action="store_true",
+                      help="Do not take backup of the current config")
     parser.add_option("--username", default="owner")
-    parser.add_option("--timeout", default="0")
-    parser.add_option("--samples", default="10")
+    parser.add_option("--timeout", default=0, type="int")
+    parser.add_option("--samples", default=DEFAULT_SAMPLES, type="int")
     parser.add_option("--password", default="default")
     parser.add_option("--cfgfile", default=None,
                       help="-- will write to stdout")
@@ -692,12 +697,12 @@ def main_opts(parser, options, args):
     elif action == "getregisters":
         eg.getregisters(options.cfgfile)
     elif action == "setregisters":
-        eg.setregisters(options.cfgfile)
+        eg.setregisters(options.cfgfile, options.skip_backup)
     elif action == "rotate-voltage-config":
         eg.rotate_voltage_cofig()
     elif action == "auto-phase-match":
         import egauge_auto_config
-        data = egauge_auto_config.auto_phase_match(eg)
+        data = egauge_auto_config.auto_phase_match(eg, options.samples)
 
     if hasattr(options, "exit") is False or options.exit is True:
         exit(retval)
