@@ -41,6 +41,10 @@ def auto_phase_match(cfg, samples=8):
     dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
 
     team = phase_match(data)
+
+    for tt in team:
+        print tt
+    return
     channels = data[0][0][0]
     totals = data[0][0][2]
     body = cfg.get_installation_POST(channels, team, totals)
@@ -65,14 +69,22 @@ def phase_match(data):
     rot = [[max([data[cfgdx][1][dx][1][idx] for dx in range(len(data[cfgdx][1]))],
             key=lambda v: v.I) for idx in range(12)]
            for cfgdx in range(3)]
-    cfg_rot = [data[cfgdx][0][1] for cfgdx in range(3)]
+    cfg_rot = [sorted(data[cfgdx][0][1], key=lambda v: v.id) for cfgdx in range(3)]
     from copy import copy
-    newRegs = copy(cfg_rot[0])
+    newRegs = sorted(copy(cfg_rot[0]), key=lambda v: v.id)
+    for idx, nr in enumerate(newRegs):
+        print idx, nr
+    #from IPython.core.debugger import Pdb; Pdb().set_trace()
     for idx in range(len(rot[0])):
-        ct = [(dx, rot[dx][idx]) for dx in range(3)]
+        ct = [(dx, rot[dx][idx]) for dx in range(3) if rot[dx][idx].I > MIN_CURRENT]
+
+        if len(ct) == 0:
+            print "currents too low to determine correctness"
+            continue
 
         by_pf = sorted(ct, key=lambda v: v[1].pf, reverse=True)
-        cts = None
+        # intialize to no-change
+        cts = ct[0]
         flip = False
         if by_pf[0][1].P < 0.0:
             if by_pf[0][1].I < 10.0:
@@ -96,13 +108,14 @@ def phase_match(data):
 
         val = reg.val
         if flip is True:
-            print "Flipping {}".format(cts[1].ct)
+            print "Flipping {}".format(cts)
+
             if val[0] == '-':
                 val = val[1:]
             else:
                 val = '-' + val
         name = reg.name
-        name = "{}.{}".format(name[:-2], cts[1].l)
+        name = "{}.{}".format(name[:-2], cts[1].l[-1])
 
         newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
 
@@ -115,3 +128,14 @@ def _load_test_data():
     data7 = pickle.load(open("tests/egauge7227.egaug.es.pckl"))
 
     return data7, data8, data9
+
+
+def main():
+    import sys
+    data = pickle.load(open(sys.argv[1]))
+    newregs = phase_match(data)
+    for idx, nr in enumerate(newregs):
+        print idx, nr
+
+if __name__ == "__main__":
+    main()
