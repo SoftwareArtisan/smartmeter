@@ -628,6 +628,7 @@ def cfg_opts():
     parser.add_option("--pushURI")
     parser.add_option("--ntpServer")
     parser.add_option("--path")
+    parser.add_option("--restore", default=False, action="store_true")
 
     return parser
 
@@ -702,7 +703,7 @@ def main_opts(parser, options, args):
         eg.rotate_voltage_cofig()
     elif action == "auto-phase-match":
         import egauge_auto_config
-        data = egauge_auto_config.auto_phase_match(eg, options.samples)
+        data = egauge_auto_config.auto_phase_match(eg, options.samples, options.restore)
 
     if hasattr(options, "exit") is False or options.exit is True:
         exit(retval)

@@ -34,12 +34,15 @@ def measure_and_rotate(cfg, samples=30):
     return ((config, chdata))
 
 
-def auto_phase_match(cfg, samples=30):
+def auto_phase_match(cfg, samples=30, restore=False):
     data = []
 
     if 'PCKL_FILE' in os.environ:
         data = pickle.load(open(os.environ['PCKL_FILE'], "rb"))
     else:
+        backupfile = "%s.conf.%d.json" % (cfg.devurl.hostname, int(time.time()))
+        print "Making a backup config for later restore"
+        cfg.getregisters(ofile=backupfile)
         for i in range(3):
             data.append(measure_and_rotate(cfg, samples))
         try:
@@ -58,9 +61,13 @@ def auto_phase_match(cfg, samples=30):
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
 
     if 'PCKL_FILE' not in os.environ:
-        body = cfg.get_installation_POST(channels, team, totals)
-        uri = "/cgi-bin/protected/egauge-cfg"
-        resp, cont = cfg.request(uri, method="POST", body=body)
+        if restore is True:
+            print "Restoring to original configuration on request"
+            cfg.setregisters(ifile=backupfile, skip_backup=True)
+        else:
+            body = cfg.get_installation_POST(channels, team, totals)
+            uri = "/cgi-bin/protected/egauge-cfg"
+            resp, cont = cfg.request(uri, method="POST", body=body)
         cfg.wait()
         cfg.reboot()
 
