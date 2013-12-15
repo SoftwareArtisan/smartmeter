@@ -12,6 +12,9 @@ import EG_CTCFG
 import json
 import StringIO
 from datetime import datetime, timedelta
+import os
+
+THISDIR = os.path.dirname(os.path.abspath(__file__))
 
 Total = namedtuple('map', 'id,val')
 Reg = namedtuple('reg', 'id,name,val,type')

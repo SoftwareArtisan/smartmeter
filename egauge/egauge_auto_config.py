@@ -6,6 +6,7 @@
 ##
 
 import pickle
+import egauge_config
 from egauge_config import Reg
 import time
 import os
@@ -47,7 +48,8 @@ def auto_phase_match(cfg, samples=30, restore=False):
             data.append(measure_and_rotate(cfg, samples))
         try:
             from cloud.serialization.cloudpickle import dump
-            dump(data, open("/tmp/{}T{}.pckl".format(cfg.devurl.netloc, int(time.time())), "wb"))
+            dump(data, open("{}/tests/{}T{}.pckl".format(egauge_config.THISDIR, cfg.devurl.netloc,
+                                                         int(time.time())), "wb"))
         except ImportError as ex:
             print "unable to save pckl file", ex
 
