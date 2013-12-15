@@ -1,0 +1,3 @@
+cloud
+httplib2
+elementtree
