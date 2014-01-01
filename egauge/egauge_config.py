@@ -610,6 +610,12 @@ actions = [
     "rotate-voltage-config", "auto-phase-match"]
 
 DEFAULT_SAMPLES = 10
+DEFAULT_PASSWORD = "default"
+if 'EG_PASSWORD' in os.environ:
+    DEFAULT_PASSWORD = os.environ['EG_PASSWORD']
+DEFAULT_USERNAME = "owner"
+if 'EG_USERNAME' in os.environ:
+    DEFAULT_USERNAME = os.environ['EG_USERNAME']
 
 
 def cfg_opts():
@@ -620,10 +626,10 @@ def cfg_opts():
                       help="will try to fetch seconds data if specified")
     parser.add_option("--skip-backup", default=False, action="store_true",
                       help="Do not take backup of the current config")
-    parser.add_option("--username", default="owner")
+    parser.add_option("--username", default=DEFAULT_USERNAME)
     parser.add_option("--timeout", default=0, type="int")
     parser.add_option("--samples", default=DEFAULT_SAMPLES, type="int")
-    parser.add_option("--password", default="default")
+    parser.add_option("--password", default=DEFAULT_PASSWORD, help="export EG_PASSWORD instead of this")
     parser.add_option("--cfgfile", default=None,
                       help="-- will write to stdout")
     parser.add_option("--branch", help="branch to use for upgrades, default=stable", default="stable")
