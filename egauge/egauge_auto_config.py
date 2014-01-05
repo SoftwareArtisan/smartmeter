@@ -77,6 +77,7 @@ def auto_phase_match(cfg, samples=30, restore=False):
 
 # For current less than this we cannot be certain
 MIN_CURRENT = 3.0
+MIN_PF = 0.5
 
 
 def phase_match(data, enforce_phase_suffix=True, verbose=True):
@@ -144,10 +145,14 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
         if name in by_name:
             print "collision old:", idx, by_name[name]
             print "collision new:", idx, cts
+            print "other options", ct
             #name = "COLLISION_" + name
         else:
-            by_name[name] = cts
-            newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
+            by_name[name] = (cts, ct)
+            if cts[1].pf > MIN_PF:
+                newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
+            else:
+                print "Rejecting because pf is too low", cts[1].pf
 
     return newRegs
 
