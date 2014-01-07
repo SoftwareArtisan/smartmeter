@@ -10,6 +10,8 @@ import egauge_config
 from egauge_config import Reg
 import time
 import os
+from collections import defaultdict
+import itertools
 
 
 """
@@ -80,6 +82,129 @@ MIN_CURRENT = 3.0
 MIN_PF = 0.5
 
 
+class PhaseObj(object):
+    def __init__(self, data):
+        self.data = data
+
+    def cfg(self, idx):
+        return self.data[idx][0][1]
+
+    def ctcfg(self, idx):
+        return self.data[idx][0][0]
+
+    def groups(self):
+        if hasattr(self, "_groups") is False:
+            self._groups = defaultdict(list)
+            for cf in self.data[0][0][1]:
+                if cf.val.startswith('L'):
+                    continue
+                self._groups[cf.name.partition('.')[0]].append(cf)
+        return self._groups
+
+    def groupdata(self, groupname):
+        """
+        get all available data for the group
+        """
+        for idx in range(len(self.data)):
+            data = self.data[idx][1]
+            for didx in range(len(data)):
+                data[didx][1]
+
+    def groupPerms(self, groupname):
+        """
+        for a group return all valid perms
+        """
+        grp = self.groups()[groupname]
+        vct = [rg.val.partition('*')[0] for rg in grp]
+        vct = [v[1:] if v[0] == '-' else v for v in vct]
+        perms = []
+
+        for perm in itertools.permutations('123', len(vct)):
+            perms.append(tuple([(vct[idx], "L{}".format(phase)) for idx, phase in enumerate(perm)]))
+
+        return perms
+
+    def bestReadings(self):
+        maxdict = {}
+        for dt in self.data:
+            for ts, rdg in dt[1]:
+                for rdict in rdg:
+                    if (rdict.ct, rdict.l) not in maxdict or maxdict[(rdict.ct, rdict.l)].I < rdict.I:
+                        maxdict[(rdict.ct, rdict.l)] = rdict
+        return maxdict
+
+
+    def bestConfig(self):
+        mr = self.bestReadings()
+        # initialize cfg to original configuration
+        cfgs = {}
+
+        for group in self.groups():
+            perms = self.groupPerms(group)
+            # for each perm for the group, check best reading and rank it.
+            perm_pf = []
+            #print group, perms
+            # sort and filter by pf
+            for perm in perms:
+                pf = 1.0
+                for perm_element in perm:
+                    if perm_element not in mr:
+                        continue
+                    if mr[perm_element].I < MIN_CURRENT:
+                        print "Current too low for", perm, mr[perm_element].I
+                        continue
+                    #print perm_element, mr[perm_element]
+                    pf = min(pf, mr[perm_element].pf)
+                if pf > MIN_PF:
+                    perm_pf.append((pf, perm))
+                else:
+                    print "pf too low for", pf, perm
+
+            if len(perm_pf) == 0:
+                print "unable to determine", group
+                continue
+
+            # consider best pfs first
+            perm_pf = sorted(perm_pf, reverse=True)
+
+            #from IPython.core.debugger import Pdb; Pdb().set_trace()
+            # if only 1 is present, that that is the value
+            if len(perm_pf) == 1:
+                cfgs[group] = perm_pf[0][1]
+                continue
+            # check signs..
+            # if the 1st one has all positive signs.. done.
+            idx = 0
+            #from IPython.core.debugger import Pdb; Pdb().set_trace()
+
+            if len(perm_pf[idx][1]) == len([mr[pr] for pr in perm_pf[idx][1] if mr[pr].P > 0]):
+                # all positive
+                cfgs[group] = perm_pf[idx][1]
+                continue
+
+            idx = 1
+            if len(perm_pf[idx][1]) == len([mr[pr] for pr in perm_pf[idx][1] if mr[pr].P > 0]):
+                # all positive
+                cfgs[group] = perm_pf[idx][1]
+                continue
+
+            # both 1st and 2nd have negative values
+            # check who has the better average pf
+            sumpf0 = sum([mr[perm_element].pf for perm_element in perm_pf[0][1]])
+            sumpf1 = sum([mr[perm_element].pf for perm_element in perm_pf[1][1]])
+
+            if sumpf0 > sumpf1:
+                cfgs[group] = perm_pf[0][1]
+            else:
+                cfgs[group] = perm_pf[1][1]
+
+            # flipping CT ?
+            # whichever ones are negative should be flipped
+            # we have already selected something
+
+        return cfgs
+
+
 def phase_match(data, enforce_phase_suffix=True, verbose=True):
     """
     look at data and output the best configuration
@@ -96,6 +221,10 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
     if verbose:
         for idx, nr in enumerate(newRegs):
             print idx, nr
+
+    ph = PhaseObj(data)
+
+    print ph.bestConfig()
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
 
     by_name = {}
