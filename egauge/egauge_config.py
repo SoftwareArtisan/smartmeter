@@ -74,22 +74,34 @@ class egcfg:
         s.devurl = uu
         s.username = username
         s.password = password
-        s.lg = lg
+        s.lg = lg or logger
         s.req = httplib2.Http(timeout=60)
         s.req.add_credentials(username, password)   # Digest Authentication
 
-    def request(s, uri, method="GET", body=None, verbose=True):
+    def request(s, uri, method="GET", body=None, verbose=True, retry=True):
         if not uri.startswith("/"):
             uri = "/" + uri
         requrl = s.devurl.geturl() + uri
         success = False
         if verbose:
             print requrl
-        response, content = s.req.request(requrl, method=method,
+
+        if retry:
+            tries = 3
+        else:
+            tries = 1
+        for rtry in range(tries):
+            response, content = s.req.request(requrl, method=method,
                                           headers={'Connection': 'Keep-Alive',
                                                    'accept-encoding': 'gzip',
                                                    'Content-Type': 'application/xml'},
                                           body=body)
+        
+            if response['status'] == '404':
+                s.lg.warning("device not found. Probably it is not up")
+            else:
+                break
+            time.sleep(2)
         if response['status'] == '401':
             s.lg.warning("Unauthorized request!")
             raise urllib2.HTTPError(
@@ -522,10 +534,13 @@ class egcfg:
         print ret[1]
         return ret
 
-    def wait(s):
+    def wait(s, fn=None):
         """
         wait for at most timeout seconds to check if the server is up
         """
+        if fn is None:
+            fn = lambda:  s.request("/status.xml")
+        
         found = False
         waited = 0
         step = 2
@@ -533,7 +548,8 @@ class egcfg:
             time.sleep(step)
             waited += step
             try:
-                resp, content = s.request("/status.xml")
+                #resp, content = s.request("/status.xml")
+                fn()
                 found = True
                 break
             except urllib2.HTTPError as herr:

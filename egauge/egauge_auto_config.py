@@ -32,8 +32,8 @@ def measure_and_rotate(cfg, samples=30):
 
     cfg.rotate_voltage_cofig()
     cfg.timeout = 25
-    cfg.wait()
-    cfg.reboot()
+    cfg.wait(cfg.reboot)
+    
     return ((config, chdata))
 
 
