@@ -6,7 +6,7 @@ import logging
 import time
 import urlparse
 import urllib2
-from elementtree import ElementTree as ET
+import xml.etree.ElementTree as ET
 from collections import namedtuple
 import EG_CTCFG
 import json
