@@ -81,6 +81,17 @@ def auto_phase_match(cfg, samples=30, restore=False):
 MIN_CURRENT = 3.0
 MIN_PF = 0.5
 
+def _get_ct_from_val(val, remove_sign=False):
+    """
+    given CT3*L3 --> CT3
+    -CT4*L1 --> CT4
+    """
+    val = val.partition('*')[0]
+    if remove_sign is True:
+        if val.startswith("-"):
+            val = val[1:]
+    return val
+
 
 class PhaseObj(object):
     def __init__(self, data):
@@ -136,8 +147,8 @@ class PhaseObj(object):
 
     def bestConfig(self):
         mr = self.bestReadings()
-        # initialize cfg to original configuration
         cfgs = {}
+        flipped = {}
 
         for group in self.groups():
             perms = self.groupPerms(group)
@@ -201,8 +212,11 @@ class PhaseObj(object):
             # flipping CT ?
             # whichever ones are negative should be flipped
             # we have already selected something
+            for perm_element in cfgs[group]:
+                if mr[perm_element].P < 0.0:
+                    flipped[mr[perm_element].ct] = mr[perm_element]
 
-        return cfgs
+        return cfgs, flipped
 
 
 def phase_match(data, enforce_phase_suffix=True, verbose=True):
@@ -224,64 +238,28 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
 
     ph = PhaseObj(data)
 
-    print ph.bestConfig()
+    bc, flipped = ph.bestConfig()
+    
+    by_ct = {}
+    for group, pairs in bc.items():
+        for (ct,l) in pairs:
+            by_ct[ct]=l
+
+    print by_ct
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
-
-    by_name = {}
-    for idx in range(len(rot[0])):
-        ct = [(dx, rot[dx][idx]) for dx in range(3) if rot[dx][idx].I > MIN_CURRENT]
-        flip = False
-
-        if len(ct) == 0:
-            print "Current too low", rot[0][idx].ct
-            cts = (0, rot[0][idx])
-        else:
-            by_pf = sorted(ct, key=lambda v: v[1].pf, reverse=True)
-            # intialize to no-change
-            cts = ct[0]
-            if by_pf[0][1].P < 0.0:
-                if by_pf[0][1].I < 10.0:
-                    # low current
-                    if len(by_pf) > 1 and by_pf[1][1].P > 0.0 and by_pf[1][1].pf > 0.5:
-                        # low pf at low load for motors
-                        cts = by_pf[1]
-                        print "Potentially motor running at low load", cts
-                    else:
-                        # flip CT
-                        flip = True
-                        cts = by_pf[0]
-                else:
-                    # flip CT
-                    flip = True
-                    cts = by_pf[0]
-            else:
-                # we good
-                cts = by_pf[0]
-
-        reg = cfg_rot[cts[0]][idx]
-
-        val = reg.val
-        if flip is True:
-            print "Flipping {}: {}".format(cts[1].ct, cts[1])
-            if val[0] == '-':
-                val = val[1:]
-            else:
-                val = '-' + val
-        name = reg.name
-        if enforce_phase_suffix:
-            name = "{}.{}".format(name.rpartition(".")[0], cts[1].l[-1])
-
-        if name in by_name:
-            print "collision old:", idx, by_name[name]
-            print "collision new:", idx, cts
-            print "other options", ct
-            #name = "COLLISION_" + name
-        else:
-            by_name[name] = (cts, ct)
-            if cts[1].pf > MIN_PF:
-                newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
-            else:
-                print "Rejecting because pf is too low", cts[1].pf
+    for idx in range(len(newRegs)):
+        reg = newRegs[idx]
+        ct = _get_ct_from_val(reg.val, True)
+        if ct in by_ct:
+            val = "{}*{}".format(ct, by_ct[ct])
+            if ct in flipped:
+                print "flip", ct, val, flipped[ct]
+                val = "-"+val
+            name = reg.name
+            if enforce_phase_suffix:
+                name = "{}.{}".format(name.rpartition(".")[0], by_ct[ct][1:])
+            newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
+            
 
     return newRegs
 
