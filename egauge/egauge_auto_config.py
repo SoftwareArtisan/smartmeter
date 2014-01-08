@@ -242,14 +242,9 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
     # for all 3 configs (cfgdx)
     # we  check every CT and pick the max current rating for every CT
     # That gives us the best possible option
-    cfg_rot = [sorted(data[cfgdx][0][1], key=lambda v: v.id) for cfgdx in range(3)]
     from copy import copy
-    newRegs = sorted(copy(cfg_rot[0]), key=lambda v: v.id)
-    if verbose:
-        for idx, nr in enumerate(newRegs):
-            print idx, nr
-
     ph = PhaseObj(data)
+    newRegs = sorted(copy(ph.cfg(0)), key=lambda v: v.id)
 
     bc, flipped, br = ph.bestConfig()
     by_ct = {}
@@ -258,16 +253,20 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
             by_ct[ct] = (l, br[(ct, l)])
 
     print by_ct
-    #from IPython.core.debugger import Pdb; Pdb().set_trace()
     updates = 0
     for idx in range(len(newRegs)):
         reg = newRegs[idx]
         ct = _get_ct_from_val(reg.val, True)
         if ct in by_ct:
             val = "{}*{}".format(ct, by_ct[ct][0])
+            if reg.val.startswith("-"):
+                val = "-" + val
             if ct in flipped:
                 print "flip", ct, val, flipped[ct]
-                val = "-" + val
+                if val.startswith("-"):
+                    val = val[1:]
+                else:
+                    val = "-" + val
             name = reg.name
             if enforce_phase_suffix:
                 name = "{}.{}".format(name.rpartition(".")[0], by_ct[ct][0][1:])
