@@ -42,7 +42,7 @@ def auto_phase_match(cfg, samples=30, restore=False):
     if 'PCKL_FILE' in os.environ:
         data = pickle.load(open(os.environ['PCKL_FILE'], "rb"))
     else:
-        backupfile = "%s.conf.%d.json" % (cfg.devurl.hostname, int(time.time()))
+        backupfile = "%s.conf.%d.backup.json" % (cfg.devurl.hostname, int(time.time()))
         print "Making a backup config for later restore"
         cfg.getregisters(ofile=backupfile)
         for i in range(3):
@@ -54,7 +54,7 @@ def auto_phase_match(cfg, samples=30, restore=False):
         except ImportError as ex:
             print "unable to save pckl file", ex
 
-    team = phase_match(data)
+    team, updates = phase_match(data)
 
     for tt in team:
         print tt
@@ -67,12 +67,25 @@ def auto_phase_match(cfg, samples=30, restore=False):
         if restore is True:
             print "Restoring to original configuration on request"
             cfg.setregisters(ifile=backupfile, skip_backup=True)
+            cfg.wait()
+            cfg.reboot()
         else:
-            body = cfg.get_installation_POST(channels, team, totals)
-            uri = "/cgi-bin/protected/egauge-cfg"
-            resp, cont = cfg.request(uri, method="POST", body=body)
-        cfg.wait()
-        cfg.reboot()
+            if updates > 0:
+                body = cfg.get_installation_POST(channels, team, totals)
+                uri = "/cgi-bin/protected/egauge-cfg"
+                resp, cont = cfg.request(uri, method="POST", body=body)
+                cfg.wait()
+                cfg.reboot()
+            else:
+                print "No recommended change to the original config"
+    else:
+        if updates > 0:
+            obj = cfg._to_json(channels, team, totals)
+            obj_str = cfg._format_json(obj)
+            ofile = "%s.conf.%d.phase_checked.json" % (cfg.devurl.hostname, int(time.time()))
+            with open(ofile, "wt") as of:
+                print >> of, obj_str
+            print "saved config to ", ofile
 
     return ((channels, team, totals))
 
@@ -80,6 +93,7 @@ def auto_phase_match(cfg, samples=30, restore=False):
 MIN_CURRENT = 3.0
 MIN_PF = 0.5
 INVALID_PF = 2.0
+
 
 def _get_ct_from_val(val, remove_sign=False):
     """
@@ -218,7 +232,7 @@ class PhaseObj(object):
                 if mr[perm_element].P < 0.0:
                     flipped[mr[perm_element].ct] = mr[perm_element]
 
-        return cfgs, flipped
+        return cfgs, flipped, mr
 
 
 def phase_match(data, enforce_phase_suffix=True, verbose=True):
@@ -228,9 +242,6 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
     # for all 3 configs (cfgdx)
     # we  check every CT and pick the max current rating for every CT
     # That gives us the best possible option
-    rot = [[max([data[cfgdx][1][dx][1][idx] for dx in range(len(data[cfgdx][1]))],
-            key=lambda v: v.I) for idx in range(12)]
-           for cfgdx in range(3)]
     cfg_rot = [sorted(data[cfgdx][0][1], key=lambda v: v.id) for cfgdx in range(3)]
     from copy import copy
     newRegs = sorted(copy(cfg_rot[0]), key=lambda v: v.id)
@@ -240,30 +251,33 @@ def phase_match(data, enforce_phase_suffix=True, verbose=True):
 
     ph = PhaseObj(data)
 
-    bc, flipped = ph.bestConfig()
-    
+    bc, flipped, br = ph.bestConfig()
     by_ct = {}
     for group, pairs in bc.items():
-        for (ct,l) in pairs:
-            by_ct[ct]=l
+        for (ct, l) in pairs:
+            by_ct[ct] = (l, br[(ct, l)])
 
     print by_ct
     #from IPython.core.debugger import Pdb; Pdb().set_trace()
+    updates = 0
     for idx in range(len(newRegs)):
         reg = newRegs[idx]
         ct = _get_ct_from_val(reg.val, True)
         if ct in by_ct:
-            val = "{}*{}".format(ct, by_ct[ct])
+            val = "{}*{}".format(ct, by_ct[ct][0])
             if ct in flipped:
                 print "flip", ct, val, flipped[ct]
-                val = "-"+val
+                val = "-" + val
             name = reg.name
             if enforce_phase_suffix:
-                name = "{}.{}".format(name.rpartition(".")[0], by_ct[ct][1:])
-            newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
-            
+                name = "{}.{}".format(name.rpartition(".")[0], by_ct[ct][0][1:])
+            if reg.name != name or reg.val != val:
+                newRegs[idx] = Reg._make((reg.id, name, val, reg.type))
+                print newRegs[idx], by_ct[ct][1]
+                updates += 1
 
-    return newRegs
+    print "{} Registers updated".format(updates)
+    return newRegs, updates
 
 
 def _load_test_data():
@@ -277,7 +291,7 @@ def _load_test_data():
 def main():
     import sys
     data = pickle.load(open(sys.argv[1]))
-    newregs = phase_match(data)
+    newregs, updates = phase_match(data)
     for idx, nr in enumerate(newregs):
         print idx, nr
 
