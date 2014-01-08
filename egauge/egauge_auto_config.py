@@ -33,7 +33,6 @@ def measure_and_rotate(cfg, samples=30):
     cfg.rotate_voltage_cofig()
     cfg.timeout = 25
     cfg.wait(cfg.reboot)
-    
     return ((config, chdata))
 
 
@@ -80,6 +79,7 @@ def auto_phase_match(cfg, samples=30, restore=False):
 # For current less than this we cannot be certain
 MIN_CURRENT = 3.0
 MIN_PF = 0.5
+INVALID_PF = 2.0
 
 def _get_ct_from_val(val, remove_sign=False):
     """
@@ -144,9 +144,9 @@ class PhaseObj(object):
                         maxdict[(rdict.ct, rdict.l)] = rdict
         return maxdict
 
-
     def bestConfig(self):
         mr = self.bestReadings()
+        print mr
         cfgs = {}
         flipped = {}
 
@@ -157,7 +157,7 @@ class PhaseObj(object):
             #print group, perms
             # sort and filter by pf
             for perm in perms:
-                pf = 1.0
+                pf = INVALID_PF
                 for perm_element in perm:
                     if perm_element not in mr:
                         continue
@@ -166,10 +166,12 @@ class PhaseObj(object):
                         continue
                     #print perm_element, mr[perm_element]
                     pf = min(pf, mr[perm_element].pf)
-                if pf > MIN_PF:
-                    perm_pf.append((pf, perm))
-                else:
-                    print "pf too low for", pf, perm
+
+                if pf != INVALID_PF:
+                    if pf > MIN_PF:
+                        perm_pf.append((pf, perm))
+                    else:
+                        print "pf too low for", pf, perm
 
             if len(perm_pf) == 0:
                 print "unable to determine", group
