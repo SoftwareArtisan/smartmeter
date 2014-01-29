@@ -434,7 +434,7 @@ class egcfg:
         if pushInterval:
             body += "pushInterval=%d\n" % pushInterval
         if sec:
-            body += 'pushOptions="sec"\n'
+            body += 'pushOptions="sec,gzip"\n'
         s.request(uri, method="POST", body=body)
         print body
 
