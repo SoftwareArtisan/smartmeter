@@ -87,7 +87,7 @@ def auto_phase_match(cfg, samples=30, restore=False):
                 print >> of, obj_str
             print "saved config to ", ofile
 
-    return ((channels, team, totals))
+    return ((channels, team, totals, data))
 
 # For current less than this we cannot be certain
 MIN_CURRENT = 3.0
