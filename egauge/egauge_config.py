@@ -176,7 +176,7 @@ class egcfg:
         rotated_team = []
         rotate_phase = True
         for reg in team:
-            if meter_base_names:
+            if meter_base_names is not None:
                 rotate_phase=False
                 if reg.name[:-2] in meter_base_names:
                     rotate_phase = True
