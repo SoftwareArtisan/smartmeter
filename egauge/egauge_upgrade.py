@@ -1,10 +1,19 @@
 __author__ = 'willr'
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# create a file handler
+handler = logging.FileHandler('egauge_upgrade.log')
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 from datetime import datetime
 
-from egauge_config import get_opts,egcfg,logger
-import logging
-logger.setLevel(level=logging.INFO)
+from egauge_config import get_opts,egcfg
 extra_args = ['--timeout', '60']
 
 def should_upgrade(status,new_version):
