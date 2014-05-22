@@ -3,6 +3,8 @@ __author__ = 'willr'
 from datetime import datetime
 
 from egauge_config import get_opts,egcfg,logger
+import logging
+logger.setLevel(level=logging.INFO)
 extra_args = ['--timeout', '60']
 
 def should_upgrade(status,new_version):
