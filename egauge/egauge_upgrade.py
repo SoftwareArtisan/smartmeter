@@ -54,10 +54,11 @@ def upgrade(options):
         if should_upgrade(status, options.branch):
             check_getregisters(eg.getregisters(options.cfgfile, version=options.version))
             check_upgrade(eg.upgrade(options.branch))
+            logger.info("{} was successfully upgraded to most recent firmware.".format(eg.device))
             check_register(eg.register(options.pushURI, options.pushInterval, options.seconds))
             check_reboot(eg.reboot())
             check_status(eg.status())
-            logger.info("{} was successfully upgraded to most recent firmware.".format(eg.device))
+            logger.info("{} finished upgrading.".format(eg.device))
         else:
             logger.info("{} not upgraded to firmware {} because already at {}.".format(eg.device,options.branch,status['swRev']))
 
