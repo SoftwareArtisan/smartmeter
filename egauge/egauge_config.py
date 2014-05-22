@@ -109,33 +109,33 @@ class egcfg:
                                               body=body)
 
             if response['status'] == '404':
-                s.lg.warning("device not found. Probably it is not up")
+                s.lg.warning("device not found. Probably it is not up {}".format(requrl))
             else:
                 break
             time.sleep(2)
         if response['status'] == '401':
-            s.lg.warning("Unauthorized request!")
+            s.lg.warning("Unauthorized request! {}".format(requrl))
             raise urllib2.HTTPError(
                 requrl, 401, "Unauthorized Request", hdrs=None, fp=None)
         elif response['status'] == '400':
-            s.lg.warning("Bad Request!")
+            s.lg.warning("Bad Request! {}".format(requrl))
             raise urllib2.HTTPError(
                 requrl, 400, "Bad Request", hdrs=None, fp=None)
         elif response['status'] == '500':
-            s.lg.warning("Internal Error!")
+            s.lg.warning("Internal Error! {}".format(requrl))
             raise urllib2.HTTPError(
                 requrl, 500, "Internal Error", hdrs=None, fp=None)
         elif response['status'] == '408':
-            s.lg.warning("Request timeout!")
+            s.lg.warning("Request timeout! {}".format(requrl))
             raise urllib2.HTTPError(
                 requrl, 408, "Request Timeout", hdrs=None, fp=None)
         elif response['status'] == '404':
-            s.lg.warning("device not found. Probably it is not up")
+            s.lg.warning("device not found. Probably it is not up. {}".format(requrl))
             raise urllib2.HTTPError(
                 requrl, 404, "Device not found", hdrs=None, fp=None)
         elif 'not authorized' in content.lower():
-            s.lg.warning("Unauthorized request! using username={} and password={}".format(
-                s.username, s.password))
+            s.lg.warning("Unauthorized request! using username={} and password={} {}".format(
+                s.username, s.password, requrl))
             response['status'] = 401
             raise urllib2.HTTPError(
                 requrl, 401, "Unauthorized Request", hdrs=None, fp=None)
