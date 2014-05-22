@@ -62,6 +62,7 @@ def parse_livevals(cont):
 class egcfg:
     def __init__(s, devurl, username, password, lg):
         s.devurl = s.resolve_url(devurl)
+        s.device = s.devurl.hostname
         s.username = username
         s.password = password
         s.lg = lg or logger
@@ -471,7 +472,7 @@ class egcfg:
         if sec:
             body += 'pushOptions="sec,gzip"\n'
         s.request(uri, method="POST", body=body)
-        print body
+        return body
 
     def upgrade(s, branch):
         uri = "/cgi-bin/protected/sw-upgrade?branch="
@@ -650,7 +651,6 @@ class egcfg:
         for child in root._children:
             st[child.tag] = child.text
 
-        print st
         return st
 
 
@@ -668,14 +668,12 @@ DEFAULT_USERNAME = "owner"
 if 'EG_USERNAME' in os.environ:
     DEFAULT_USERNAME = os.environ['EG_USERNAME']
 
-
-def cfg_opts():
+def cfg_arg_parse():
     import argparse
 
-    parser = argparse.ArgumentParser(description='eGauge Management Tool')
+    parser = argparse.ArgumentParser(description='eGauge Management Tool',add_help=False)
 
-    actions.append('network')
-    parser.add_argument('action', choices=actions, help='action')
+    parser.add_argument('action', nargs='?', choices=actions, help='action')
     parser.add_argument('url', help='eGauge ID or complete url')
 
     parser.add_argument("--seconds", default=False, action="store_true",
@@ -686,39 +684,40 @@ def cfg_opts():
     parser.add_argument("--password", default=DEFAULT_PASSWORD, help="export EG_PASSWORD instead of this")
     parser.add_argument("--timeout", default=0, type=int)
     parser.add_argument("--samples", default=DEFAULT_SAMPLES, type=int)
-
-    parser.add_argument("--cfgfile", default=None,
-                        help="-- will write to stdout")
+    parser.add_argument("--cfgfile", default=None, help="-- will write to stdout")
     parser.add_argument("--branch", help="branch to use for upgrades, default=stable", default="stable")
-    parser.add_argument("--pushInterval")
+    parser.add_argument("--pushInterval",type=int)
     parser.add_argument("--pushURI")
     parser.add_argument("--ntpServer")
     parser.add_argument("--path")
     parser.add_argument("--version")
     parser.add_argument("--restore", default=False, action="store_true")
 
-    from egauge_network import add_subparser
-
-    add_subparser(parser)
-
     return parser
 
+def get_opts(cmd_line=None):
+    parser = cfg_arg_parse()
+    return parser.parse_args(cmd_line) if cmd_line else parser.parse_args()
 
-def main_opts(options):
+def egauge_cfg():
+
+    options = get_opts()
+
     action = options.action
     device_url = options.url
 
     eg = egcfg(device_url, options.username, options.password, logger)
     eg.timeout = int(options.timeout)
 
-    pushInterval = None
     retval = 0
-    if options.pushInterval:
-        pushInterval = int(options.pushInterval)
+    if not action:
+        logger.warn("Missing expected action:"+action)
+        exit(retval)
+
     if action == "register":
-        eg.register(options.pushURI, pushInterval, options.seconds)
+        print(eg.register(options.pushURI, options.pushInterval, options.seconds))
     if action == "de-register":
-        eg.register("", pushInterval, options.seconds)
+        print(eg.register("", options.pushInterval, options.seconds))
     if action == "channelchecker":
         eg.channelchecker(int(options.samples))
     elif action == "reboot":
@@ -730,7 +729,7 @@ def main_opts(options):
     elif action == "netconfig":
         eg.netconfig()
     elif action == "status":
-        eg.status()
+        print eg.status()
     elif action == "getntp":
         eg.getntp()
     elif action == "is-caught-up":
@@ -760,22 +759,10 @@ def main_opts(options):
         eg.rotate_voltage_cofig()
     elif action == "auto-phase-match":
         import egauge_auto_config
-
         data = egauge_auto_config.auto_phase_match(eg, options.samples, options.restore)
-    elif action == "network":
-        from egauge_network import eGaugeNetworkConfig
-
-        networkcfg = eGaugeNetworkConfig(options)
 
     if hasattr(options, "exit") is False or options.exit is True:
         exit(retval)
 
-
-def main():
-    parser = cfg_opts()
-    args = parser.parse_args()
-    main_opts(args)
-
-
 if __name__ == "__main__":
-    main()
+    egauge_cfg()

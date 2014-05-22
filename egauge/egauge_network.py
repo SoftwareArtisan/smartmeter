@@ -224,7 +224,8 @@ class ConfigureNetwork(object):
 
 import argparse
 
-def add_subparser(parser):
+def cfg_arg_parse(parent_parser):
+    parser = argparse.ArgumentParser(parents=[parent_parser])
     subparsers = parser.add_subparsers(help='network configuration sub-command')
     subparser = subparsers.add_parser("network")
     subparser.add_argument("--dryrun", default=False, action="store_true")
@@ -253,6 +254,8 @@ def add_subparser(parser):
     subparser.add_argument('--bridging', choices=['yes', 'no'],
                            help='Enable bridging. Normally, eGauge communicates through a single network interface at any given time (e.g., HomePlug or hardwired Ethernet). If you turn on this option, the interfaces are bridged together, meaning that eGauge will transparently forward all traffic between the interfaces, creating a single logical network. Bridging can be useful when multiple eGauges are installed at a single location. You can then hardwire one device and, assuming the other devices can communicate with the first one via HomePlug, enable bridging on the first device to tie all devices into the LAN. In effect, the first device acts as a HomePlug adapter for the others. In bridging mode, eGauge enables the spanning tree protocol (STP as defined by IEEE 802.1D) to support automatic loop detection. However, most consumer-grade networking equipment does not support STP, so it may still be possible to create a loop that could flood a LAN with packets. For example, this could happen if eGauge bridges traffic beteen HomePlug and LAN and another HomePlug adapter is plugged into the same LAN. In other words: when enabling bridging, make sure there are no loops or use only equipment that supports STP. Bridging works by putting the network interfaces into promiscuous mode, which means eGauge will receive and process any and all packets received over that link. This increases processing overheads and therefore is not recommend on LANs with lots of unrelated traffic.')
 
+    return parser
+
 DEFAULT_PASSWORD = "default"
 if 'EG_PASSWORD' in os.environ:
     DEFAULT_PASSWORD = os.environ['EG_PASSWORD']
@@ -271,17 +274,13 @@ def ensure_dirs(dirs=[UPLOAD_FOLDER, BACKUP_FOLDER]):
         except:
             logging.error('Error making directory ' + dir)
 
+
 if __name__ == '__main__':
     ensure_dirs([UPLOAD_FOLDER, BACKUP_FOLDER])
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('url', type=str, help='eGauge ID or complete url')
-    parser.add_argument("--username", default=DEFAULT_USERNAME)
-    parser.add_argument("--password", default=DEFAULT_PASSWORD, help="export EG_PASSWORD instead of this")
+    from egauge_config import cfg_arg_parse as parent_parser
+    parser = cfg_arg_parse(parent_parser())
 
-    add_subparser(parser)
-
-    #options = parser.parse_args(good_parameters)
     options = parser.parse_args()
     nc = NetworkConfiguration(vars(options))
     cfg_net = ConfigureNetwork(options.url, options.username, options.password)
