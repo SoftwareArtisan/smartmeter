@@ -7,6 +7,9 @@ extra_args = ['--timeout', '60']
 
 def should_upgrade(status,new_version):
     current_version = status['swRev'] if 'swRev' in status else None
+    print new_version
+    print current_version
+    print not new_version or current_version >= new_version
     return not new_version or current_version >= new_version
 
 def check_status(status):
